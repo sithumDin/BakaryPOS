@@ -81,6 +81,9 @@ export default function ProductsPage() {
     if (res.ok) {
       setShowModal(false);
       fetchProducts();
+    } else {
+      const { error } = await res.json().catch(() => ({ error: 'Failed to connect to database' }));
+      alert(`Error saving product: ${error || 'Unknown error'}. Did you add your MONGODB_URI to .env.local?`);
     }
   };
 

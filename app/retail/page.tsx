@@ -20,9 +20,15 @@ export default function RetailPage() {
 
   useEffect(() => {
     fetch('/api/products')
-      .then((r) => r.json())
-      .then(setProducts)
-      .catch(console.error)
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
+      .then((data) => setProducts(Array.isArray(data) ? data : []))
+      .catch((e) => {
+        console.error(e);
+        setProducts([]);
+      })
       .finally(() => setLoading(false));
   }, []);
 

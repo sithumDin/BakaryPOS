@@ -19,9 +19,15 @@ export default function CustomersPage() {
 
   const fetchCustomers = () => {
     fetch('/api/customers')
-      .then((r) => r.json())
-      .then(setCustomers)
-      .catch(console.error)
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
+      .then((data) => setCustomers(Array.isArray(data) ? data : []))
+      .catch((e) => {
+        console.error(e);
+        setCustomers([]);
+      })
       .finally(() => setLoading(false));
   };
 

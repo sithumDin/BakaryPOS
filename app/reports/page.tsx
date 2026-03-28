@@ -73,9 +73,15 @@ export default function ReportsPage() {
     params.set('limit', '500');
 
     fetch(`/api/sales?${params}`)
-      .then((r) => r.json())
-      .then(setSales)
-      .catch(console.error)
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
+      .then((data) => setSales(Array.isArray(data) ? data : []))
+      .catch((e) => {
+        console.error(e);
+        setSales([]);
+      })
       .finally(() => setLoading(false));
   };
 

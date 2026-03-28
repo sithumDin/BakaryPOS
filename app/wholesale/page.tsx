@@ -27,16 +27,21 @@ export default function WholesalePage() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/products').then((r) => r.json()),
-      fetch('/api/customers?type=wholesale').then((r) => r.json()),
-      fetch('/api/credit').then((r) => r.json()),
+      fetch('/api/products').then((r) => r.ok ? r.json() : []),
+      fetch('/api/customers?type=wholesale').then((r) => r.ok ? r.json() : []),
+      fetch('/api/credit').then((r) => r.ok ? r.json() : []),
     ])
       .then(([prods, custs, creds]) => {
-        setProducts(prods);
-        setCustomers(custs);
-        setCredits(creds);
+        setProducts(Array.isArray(prods) ? prods : []);
+        setCustomers(Array.isArray(custs) ? custs : []);
+        setCredits(Array.isArray(creds) ? creds : []);
       })
-      .catch(console.error)
+      .catch((e) => {
+        console.error(e);
+        setProducts([]);
+        setCustomers([]);
+        setCredits([]);
+      })
       .finally(() => setLoading(false));
   }, []);
 

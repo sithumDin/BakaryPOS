@@ -109,6 +109,37 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Server Error:', error);
-    return Response.json({ error: 'Failed to fetch dashboard data' }, { status: 500 });
+
+    // Return a safe fallback payload so the dashboard can still render
+    // even when the database is temporarily unavailable.
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dailyProfits = [];
+    for (let i = 6; i >= 0; i--) {
+      const day = new Date(todayStart);
+      day.setDate(day.getDate() - i);
+      dailyProfits.push({
+        date: day.toISOString().split('T')[0],
+        profit: 0,
+        revenue: 0,
+      });
+    }
+
+    return Response.json({
+      today: { revenue: 0, profit: 0, count: 0 },
+      week: { revenue: 0, profit: 0 },
+      month: { revenue: 0, profit: 0 },
+      year: { revenue: 0, profit: 0 },
+      totalCustomers: 0,
+      totalProducts: 0,
+      lowStockProducts: 0,
+      lowStockList: [],
+      totalOutstanding: 0,
+      recentSales: [],
+      dailyProfits,
+      categoryBreakdown: {},
+      cashierBreakdown: {},
+      warning: 'Database temporarily unavailable',
+    });
   }
 }

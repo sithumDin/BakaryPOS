@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Product, CartItem } from '@/lib/types';
 import { generateReceipt } from '@/lib/pdf';
 
@@ -16,6 +16,9 @@ export default function RetailPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState('');
+  const [blinkProductId, setBlinkProductId] = useState<string | null>(null);
+  const [selectedProductIndex, setSelectedProductIndex] = useState(0);
+  const [selectedCartIndex, setSelectedCartIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'transfer'>('cash');
   const [discount, setDiscount] = useState('');
@@ -23,6 +26,7 @@ export default function RetailPage() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [sendWhatsApp, setSendWhatsApp] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch('/api/products')
@@ -40,6 +44,12 @@ export default function RetailPage() {
 
   const addToCart = (product: Product) => {
     if (product.stock <= 0) return;
+
+    if (product._id) {
+      setBlinkProductId(product._id);
+      setTimeout(() => setBlinkProductId((prev) => (prev === product._id ? null : prev)), 250);
+    }
+
     const existing = cart.find((c) => c.product._id === product._id);
     if (existing) {
       if (existing.qty >= product.stock) return;
@@ -56,10 +66,22 @@ export default function RetailPage() {
       if (c.product._id === productId) {
         const newQty = c.qty + delta;
         if (newQty <= 0) return c;
-        if (newQty > c.product.stock) return c;
+        if (newQty > 10000) return c;
         return { ...c, qty: newQty };
       }
       return c;
+    }));
+  };
+
+  const setQty = (productId: string, qtyValue: string) => {
+    const normalized = qtyValue.replace(/[,\s]/g, '');
+    const parsed = parseInt(normalized, 10);
+    if (Number.isNaN(parsed)) return;
+
+    setCart(cart.map((c) => {
+      if (c.product._id !== productId) return c;
+      const nextQty = Math.min(Math.max(parsed, 1), 10000);
+      return { ...c, qty: nextQty };
     }));
   };
 
@@ -178,6 +200,108 @@ export default function RetailPage() {
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  const selectableProducts = filteredProducts.filter((p) => p.stock > 0);
+  const selectedProductId =
+    selectedProductIndex >= 0 && selectedProductIndex < selectableProducts.length
+      ? selectableProducts[selectedProductIndex]?._id
+      : undefined;
+  const selectedCartItem = cart[selectedCartIndex];
+
+  useEffect(() => {
+    setSelectedCartIndex((prev) => {
+      if (cart.length === 0) return 0;
+      return Math.min(prev, cart.length - 1);
+    });
+  }, [cart.length]);
+
+  useEffect(() => {
+    const onGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName.toLowerCase();
+      const isFormField = !!target && (target.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select');
+
+      if (!isFormField && e.key === '/') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+
+      if (isFormField) return;
+
+      if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        if (!processing && cart.length > 0) {
+          handleCheckout();
+        }
+        return;
+      }
+
+      if (cart.length === 0) return;
+
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        setSelectedCartIndex((prev) => (prev + 1) % cart.length);
+        return;
+      }
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setSelectedCartIndex((prev) => (prev - 1 + cart.length) % cart.length);
+        return;
+      }
+
+      if (!selectedCartItem) return;
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        updateQty(selectedCartItem.product._id!, 1);
+        return;
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (selectedCartItem.qty > 1) {
+          updateQty(selectedCartItem.product._id!, -1);
+        }
+        return;
+      }
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        removeFromCart(selectedCartItem.product._id!);
+      }
+    };
+
+    window.addEventListener('keydown', onGlobalKeyDown);
+    return () => window.removeEventListener('keydown', onGlobalKeyDown);
+  }, [cart, processing, selectedCartItem]);
+
+  const handleSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (selectableProducts.length === 0) return;
+      e.preventDefault();
+      setSelectedProductIndex((prev) => {
+        if (prev < 0) return 0;
+        if (e.key === 'ArrowDown') return (prev + 1) % selectableProducts.length;
+        return (prev - 1 + selectableProducts.length) % selectableProducts.length;
+      });
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const selectedProduct =
+        selectedProductIndex >= 0
+          ? selectableProducts[selectedProductIndex]
+          : selectableProducts[0];
+      if (selectedProduct) {
+        addToCart(selectedProduct);
+        setSearch('');
+        setSelectedProductIndex(0);
+      }
+    }
+  };
+
   if (loading) {
     return <div className="loading-spinner"><div className="spinner" /></div>;
   }
@@ -195,10 +319,15 @@ export default function RetailPage() {
           <div className="search-bar" style={{ marginBottom: '16px', maxWidth: '100%' }}>
             <span className="search-icon">🔍</span>
             <input
+              ref={searchInputRef}
               type="text"
               placeholder="Search products..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setSelectedProductIndex(0);
+              }}
+              onKeyDown={handleSearchKeyDown}
             />
           </div>
 
@@ -206,7 +335,7 @@ export default function RetailPage() {
             {filteredProducts.map((p) => (
               <div
                 key={p._id}
-                className="product-card"
+                className={`product-card ${blinkProductId === p._id ? 'blink-add' : ''} ${selectedProductId === p._id ? 'keyboard-selected' : ''}`}
                 onClick={() => addToCart(p)}
                 style={{ opacity: p.stock <= 0 ? 0.5 : 1 }}
               >
@@ -271,8 +400,8 @@ export default function RetailPage() {
               </div>
 
               <div className="cart-items">
-                {cart.map((item) => (
-                  <div key={item.product._id} className="cart-item">
+                {cart.map((item, index) => (
+                  <div key={item.product._id} className={`cart-item ${selectedCartIndex === index ? 'keyboard-selected' : ''}`}>
                     <div className="cart-item-info">
                       <div className="cart-item-name">{item.product.name}</div>
                       <div className="cart-item-price">
@@ -280,9 +409,16 @@ export default function RetailPage() {
                       </div>
                     </div>
                     <div className="cart-item-controls">
-                      <button className="qty-btn" onClick={() => updateQty(item.product._id!, -1)}>−</button>
-                      <span className="qty-value">{item.qty}</span>
-                      <button className="qty-btn" onClick={() => updateQty(item.product._id!, 1)}>+</button>
+                      <input
+                        type="number"
+                        min={1}
+                        max={10000}
+                        value={item.qty}
+                        onChange={(e) => setQty(item.product._id!, e.target.value)}
+                        inputMode="numeric"
+                        className="form-input"
+                        style={{ width: '100px', padding: '4px 8px', textAlign: 'center' }}
+                      />
                     </div>
                     <div className="cart-item-total">
                       {formatLKR(getRetailPrice(item.product) * item.qty)}

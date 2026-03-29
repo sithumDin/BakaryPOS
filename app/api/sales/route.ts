@@ -8,6 +8,21 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback_
 
 export const dynamic = 'force-dynamic';
 
+async function getSessionUser(request: NextRequest) {
+  const token = request.cookies.get('session')?.value;
+  if (!token) return null;
+
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    return {
+      id: payload.id as string,
+      role: (payload.role as string) || 'cashier',
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
@@ -64,5 +79,28 @@ export async function POST(request: NextRequest) {
     return Response.json(sale, { status: 201 });
   } catch (error) {
     return Response.json({ error: 'Failed to create sale' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const user = await getSessionUser(request);
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (user.role !== 'admin') {
+      return Response.json({ error: 'Only admins can clear sales' }, { status: 403 });
+    }
+
+    await connectDB();
+    const result = await Sale.deleteMany({});
+
+    return Response.json({
+      message: 'Sales cleared successfully',
+      deletedCount: result.deletedCount || 0,
+    });
+  } catch (error) {
+    return Response.json({ error: 'Failed to clear sales' }, { status: 500 });
   }
 }

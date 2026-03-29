@@ -45,9 +45,19 @@ export default function Dashboard() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [newReminder, setNewReminder] = useState('');
   const [savingReminder, setSavingReminder] = useState(false);
+  const [clearingSales, setClearingSales] = useState(false);
   const [userRole, setUserRole] = useState<string>('cashier');
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'year'>('today');
+
+  const fetchDashboard = async () => {
+    const res = await fetch('/api/dashboard');
+    if (!res.ok) {
+      throw new Error('Failed to load data');
+    }
+    const dashboardData = await res.json();
+    setData(dashboardData);
+  };
 
   const fetchReminders = () => {
     fetch('/api/reminders')
@@ -137,6 +147,31 @@ export default function Dashboard() {
     } catch (error) {
       console.error(error);
       alert('Failed to update reminder');
+    }
+  };
+
+  const handleClearRecentSales = async () => {
+    if (userRole !== 'admin' || clearingSales || !data || data.recentSales.length === 0) return;
+
+    const confirmed = window.confirm('Are you sure you want to clear all sales globally? This will also remove Reports history and cannot be undone.');
+    if (!confirmed) return;
+
+    setClearingSales(true);
+    try {
+      const res = await fetch('/api/sales', { method: 'DELETE' });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({ error: 'Failed to clear sales' }));
+        alert(payload.error || 'Failed to clear sales');
+        return;
+      }
+
+      await fetchDashboard();
+      alert('Recent sales cleared');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to clear sales');
+    } finally {
+      setClearingSales(false);
     }
   };
 
@@ -465,7 +500,18 @@ export default function Dashboard() {
 
       {/* Recent Sales */}
       <div className="card">
-        <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>🧾 Recent Sales</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: 0 }}>🧾 Recent Sales</h3>
+          {userRole === 'admin' && (
+            <button
+              className="btn btn-danger btn-sm"
+              onClick={handleClearRecentSales}
+              disabled={clearingSales || data.recentSales.length === 0}
+            >
+              {clearingSales ? 'Clearing...' : 'Clear Recent Sales'}
+            </button>
+          )}
+        </div>
         {data.recentSales.length === 0 ? (
           <p style={{ color: 'var(--text-dim)', textAlign: 'center', padding: '20px' }}>No sales yet</p>
         ) : (

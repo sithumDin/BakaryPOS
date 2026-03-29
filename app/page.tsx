@@ -24,6 +24,7 @@ interface DashboardData {
   }>;
   dailyProfits: Array<{ date: string; profit: number; revenue: number }>;
   categoryBreakdown: Record<string, number>;
+  cashierBreakdown: Record<string, { revenue: number; count: number }>;
 }
 
 function formatLKR(amount: number) {
@@ -258,6 +259,45 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Admin / Cashier Breakdown (Today) */}
+      <div className="card mb-24">
+        <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
+          👨‍💼 Today's Sales by Admin
+        </h3>
+        {Object.keys(data.cashierBreakdown || {}).length === 0 ? (
+          <p style={{ color: 'var(--text-dim)', textAlign: 'center', padding: '10px' }}>No sales recorded today.</p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
+            {Object.entries(data.cashierBreakdown).sort((a, b) => b[1].revenue - a[1].revenue).map(([name, stats]) => (
+              <div key={name} style={{
+                background: 'var(--bg-input)',
+                borderRadius: 'var(--radius-md)',
+                padding: '16px',
+                border: '1px solid var(--border-color)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                  <div style={{
+                    width: '32px', height: '32px', borderRadius: '50%',
+                    background: 'var(--emerald-600)', color: 'white',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 700, fontSize: '14px'
+                  }}>
+                    {name.charAt(0)}
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: '15px' }}>{name}</div>
+                </div>
+                <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--emerald-400)' }}>
+                  {formatLKR(stats.revenue)}
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  {stats.count} sale{stats.count !== 1 ? 's' : ''} today
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Recent Sales */}
       <div className="card">

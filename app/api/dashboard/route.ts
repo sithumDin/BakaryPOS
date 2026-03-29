@@ -23,6 +23,15 @@ export async function GET() {
     const todayProfit = todaySales.reduce((sum: number, s: { profit: number }) => sum + s.profit, 0);
     const todayCount = todaySales.length;
 
+    // Daily sales by cashier
+    const cashierBreakdown: Record<string, { revenue: number; count: number }> = {};
+    for (const sale of todaySales) {
+      const name = sale.cashierName || 'Admin';
+      if (!cashierBreakdown[name]) cashierBreakdown[name] = { revenue: 0, count: 0 };
+      cashierBreakdown[name].revenue += sale.total;
+      cashierBreakdown[name].count += 1;
+    }
+
     // Week stats
     const weekSales = await Sale.find({ date: { $gte: weekStart } });
     const weekRevenue = weekSales.reduce((sum: number, s: { total: number }) => sum + s.total, 0);
@@ -96,6 +105,7 @@ export async function GET() {
       recentSales,
       dailyProfits,
       categoryBreakdown: categoryMap,
+      cashierBreakdown,
     });
   } catch (error) {
     console.error('Server Error:', error);

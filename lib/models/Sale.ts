@@ -20,6 +20,8 @@ const SaleSchema = new Schema({
   profit: { type: Number, required: true },
   paymentMethod: { type: String, enum: ['cash', 'card', 'transfer'], default: 'cash' },
   saleType: { type: String, enum: ['retail', 'wholesale'], default: 'retail' },
+  cashierId: { type: Schema.Types.ObjectId, ref: 'User' },
+  cashierName: { type: String, required: true, default: 'Admin' },
   date: { type: Date, default: Date.now },
 }, { timestamps: true });
 

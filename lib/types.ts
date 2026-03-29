@@ -40,6 +40,8 @@ export interface Sale {
   profit: number;
   paymentMethod: 'cash' | 'card' | 'transfer';
   saleType: 'retail' | 'wholesale';
+  cashierId?: string;
+  cashierName?: string;
   date: string;
   createdAt?: string;
 }

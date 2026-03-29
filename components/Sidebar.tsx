@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: '📊' },
@@ -15,7 +15,28 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [user, setUser] = useState<{ name: string; username: string; role: string } | null>(null);
+
+  useEffect(() => {
+    if (pathname !== '/login') {
+      fetch('/api/auth/me')
+        .then(res => res.json())
+        .then(data => {
+          if (data.user) setUser(data.user);
+        })
+        .catch(console.error);
+    }
+  }, [pathname]);
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/login');
+    router.refresh();
+  };
+
+  if (pathname === '/login') return null;
 
   return (
     <>
@@ -61,10 +82,33 @@ export default function Sidebar() {
           })}
         </nav>
 
-        <div className="sidebar-footer">
-          <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>
-            © 2026 Govi Sewana
-          </div>
+        <div className="sidebar-footer" style={{ borderTop: '1px solid var(--border-color)', marginTop: 'auto', paddingTop: '16px' }}>
+          {user ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ 
+                  width: '32px', height: '32px', borderRadius: '50%', 
+                  background: 'var(--emerald-600)', color: 'white', 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' 
+                }}>
+                  {user.name.charAt(0)}
+                </div>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 600 }}>{user.name}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{user.role}</div>
+                </div>
+              </div>
+              <button 
+                onClick={handleLogout}
+                className="btn btn-secondary" 
+                style={{ width: '100%', padding: '6px', fontSize: '12px' }}
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : (
+             <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Loading...</div>
+          )}
         </div>
       </aside>
     </>

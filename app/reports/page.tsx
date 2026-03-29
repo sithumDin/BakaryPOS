@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { generateReport } from '@/lib/pdf';
+import { generateReport, generateReceipt } from '@/lib/pdf';
 
 interface Sale {
   _id: string;
@@ -328,6 +328,7 @@ export default function ReportsPage() {
                       <th style={{ textAlign: 'right' }}>Total</th>
                       <th style={{ textAlign: 'right' }}>Profit</th>
                       <th>Date</th>
+                      <th style={{ textAlign: 'center' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -352,6 +353,16 @@ export default function ReportsPage() {
                         </td>
                         <td style={{ color: 'var(--text-muted)' }}>
                           {new Date(sale.date).toLocaleDateString('en-LK')}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button
+                            className="btn btn-secondary"
+                            style={{ padding: '4px 8px', fontSize: '12px' }}
+                            onClick={() => generateReceipt(sale as any)}
+                            title="Download Receipt"
+                          >
+                            📥 Receipt
+                          </button>
                         </td>
                       </tr>
                     ))}

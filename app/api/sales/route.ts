@@ -2,6 +2,9 @@ import { NextRequest } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Sale from '@/lib/models/Sale';
 import Product from '@/lib/models/Product';
+import { jwtVerify } from 'jose';
+
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback_secret_key_change_this_later');
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +34,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    let cashierId, cashierName = 'Admin';
+    const token = request.cookies.get('session')?.value;
+    if (token) {
+      try {
+        const { payload } = await jwtVerify(token, JWT_SECRET);
+        cashierId = payload.id as string;
+        cashierName = payload.name as string;
+      } catch (e) {}
+    }
+
     await connectDB();
     const body = await request.json();
 
@@ -39,7 +52,7 @@ export async function POST(request: NextRequest) {
     const prefix = body.saleType === 'wholesale' ? 'WS' : 'RT';
     const invoiceNo = `${prefix}-${String(count + 1).padStart(5, '0')}`;
 
-    const sale = await Sale.create({ ...body, invoiceNo });
+    const sale = await Sale.create({ ...body, invoiceNo, cashierId, cashierName });
 
     // Update stock for each item
     for (const item of body.items) {

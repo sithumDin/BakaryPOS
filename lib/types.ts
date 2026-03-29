@@ -3,6 +3,8 @@ export interface Product {
   name: string;
   category: string;
   costPrice: number;
+  retailPrice: number;
+  wholesalePrice: number;
   sellingPrice: number;
   stock: number;
   unit: string;

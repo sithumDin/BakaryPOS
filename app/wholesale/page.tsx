@@ -8,6 +8,10 @@ function formatLKR(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function getWholesalePrice(product: Product) {
+  return product.wholesalePrice ?? product.sellingPrice ?? 0;
+}
+
 export default function WholesalePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -77,7 +81,7 @@ export default function WholesalePage() {
     setCart(cart.filter((c) => c.product._id !== productId));
   };
 
-  const subtotal = cart.reduce((sum, c) => sum + c.product.sellingPrice * c.qty, 0);
+  const subtotal = cart.reduce((sum, c) => sum + getWholesalePrice(c.product) * c.qty, 0);
   const discountAmount = parseFloat(discount) || 0;
   const total = subtotal - discountAmount;
   const totalCost = cart.reduce((sum, c) => sum + c.product.costPrice * c.qty, 0);
@@ -100,9 +104,9 @@ export default function WholesalePage() {
         product: c.product._id,
         productName: c.product.name,
         qty: c.qty,
-        unitPrice: c.product.sellingPrice,
+        unitPrice: getWholesalePrice(c.product),
         costPrice: c.product.costPrice,
-        total: c.product.sellingPrice * c.qty,
+        total: getWholesalePrice(c.product) * c.qty,
       })),
       subtotal,
       discount: discountAmount,
@@ -238,7 +242,7 @@ export default function WholesalePage() {
                   style={{ opacity: p.stock <= 0 ? 0.5 : 1 }}
                 >
                   <div className="product-name">{p.name}</div>
-                  <div className="product-price">{formatLKR(p.sellingPrice)}</div>
+                  <div className="product-price">{formatLKR(getWholesalePrice(p))}</div>
                   <div className={`product-stock ${p.stock <= 0 ? 'out-of-stock' : ''}`}>
                     {p.stock <= 0 ? 'Out of Stock' : `${p.stock} ${p.unit} available`}
                   </div>
@@ -267,7 +271,7 @@ export default function WholesalePage() {
                       <div className="cart-item-info">
                         <div className="cart-item-name">{item.product.name}</div>
                         <div className="cart-item-price">
-                          {formatLKR(item.product.sellingPrice)} × {item.qty}
+                            {formatLKR(getWholesalePrice(item.product))} × {item.qty}
                         </div>
                       </div>
                       <div className="cart-item-controls">
@@ -276,7 +280,7 @@ export default function WholesalePage() {
                         <button className="qty-btn" onClick={() => updateQty(item.product._id!, 1)}>+</button>
                       </div>
                       <div className="cart-item-total">
-                        {formatLKR(item.product.sellingPrice * item.qty)}
+                        {formatLKR(getWholesalePrice(item.product) * item.qty)}
                       </div>
                       <button className="cart-remove" onClick={() => removeFromCart(item.product._id!)}>✕</button>
                     </div>

@@ -1,6 +1,21 @@
 import jsPDF from 'jspdf';
 import { Sale } from './types';
 
+function openPdfPreview(doc: jsPDF, fileName: string) {
+  if (typeof window === 'undefined') {
+    doc.save(fileName);
+    return;
+  }
+
+  const blobUrl = doc.output('bloburl');
+  const previewWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+
+  // Fallback if popup is blocked by the browser.
+  if (!previewWindow) {
+    doc.save(fileName);
+  }
+}
+
 export function generateReceipt(sale: Sale) {
   const doc = new jsPDF({ unit: 'mm', format: [80, 200] });
   const w = 80;
@@ -101,7 +116,7 @@ export function generateReceipt(sale: Sale) {
   y += 4;
   doc.text('Govi Sewana Agro Solution', w / 2, y, { align: 'center' });
 
-  doc.save(`receipt-${sale.invoiceNo}.pdf`);
+  openPdfPreview(doc, `receipt-${sale.invoiceNo}.pdf`);
 }
 
 export function generateReport(data: {
@@ -111,10 +126,19 @@ export function generateReport(data: {
   cost: number;
   profit: number;
   salesCount: number;
-  topProducts: Array<{ name: string; total: number; qty: number }>;
+  adminSales: number;
+  adminProfit: number;
+  adminPerformance: Array<{ name: string; salesCount: number; profit: number }>;
 }) {
   const doc = new jsPDF();
   let y = 20;
+
+  const ensureSpace = (needed = 20) => {
+    if (y + needed > 280) {
+      doc.addPage();
+      y = 20;
+    }
+  };
 
   // Header
   doc.setFontSize(20);
@@ -162,32 +186,39 @@ export function generateReport(data: {
   doc.setFont('helvetica', 'normal');
   doc.text('Total Sales:', 20, y);
   doc.text(String(data.salesCount), 190, y, { align: 'right' });
-  y += 12;
+  y += 7;
+  doc.text('Admin Sales:', 20, y);
+  doc.text(String(data.adminSales), 190, y, { align: 'right' });
+  y += 7;
+  doc.text('Admin Profit:', 20, y);
+  doc.text(`LKR ${data.adminProfit.toLocaleString('en-LK', { minimumFractionDigits: 2 })}`, 190, y, { align: 'right' });
 
-  // Top Products
-  if (data.topProducts.length > 0) {
+  if (data.adminPerformance.length > 0) {
+    y += 10;
     doc.setLineWidth(0.3);
     doc.line(20, y, 190, y);
     y += 8;
+
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('Top Selling Products', 20, y);
+    doc.text('Admin Sales and Profit', 20, y);
     y += 8;
 
-    // Table header
     doc.setFontSize(9);
-    doc.text('Product', 20, y);
-    doc.text('Qty Sold', 120, y, { align: 'center' });
-    doc.text('Revenue (LKR)', 190, y, { align: 'right' });
+    doc.setFont('helvetica', 'bold');
+    doc.text('Admin', 20, y);
+    doc.text('Sales', 130, y, { align: 'right' });
+    doc.text('Profit (LKR)', 190, y, { align: 'right' });
     y += 2;
     doc.line(20, y, 190, y);
     y += 5;
 
     doc.setFont('helvetica', 'normal');
-    for (const p of data.topProducts.slice(0, 10)) {
-      doc.text(p.name, 20, y);
-      doc.text(String(p.qty), 120, y, { align: 'center' });
-      doc.text(p.total.toLocaleString('en-LK', { minimumFractionDigits: 2 }), 190, y, { align: 'right' });
+    for (const admin of data.adminPerformance) {
+      ensureSpace(8);
+      doc.text(admin.name, 20, y);
+      doc.text(String(admin.salesCount), 130, y, { align: 'right' });
+      doc.text(admin.profit.toLocaleString('en-LK', { minimumFractionDigits: 2 }), 190, y, { align: 'right' });
       y += 6;
     }
   }
@@ -203,5 +234,5 @@ export function generateReport(data: {
   y += 5;
   doc.text('Govi Sewana Agro Solution - Confidential', 105, y, { align: 'center' });
 
-  doc.save(`report-${data.title.toLowerCase().replace(/\s+/g, '-')}.pdf`);
+  openPdfPreview(doc, `report-${data.title.toLowerCase().replace(/\s+/g, '-')}.pdf`);
 }

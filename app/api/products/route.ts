@@ -18,7 +18,16 @@ export async function POST(request: NextRequest) {
   try {
     await connectDB();
     const body = await request.json();
-    const product = await Product.create(body);
+    const retailPrice = Number(body.retailPrice ?? body.sellingPrice ?? 0);
+    const wholesalePrice = Number(body.wholesalePrice ?? body.sellingPrice ?? 0);
+
+    const product = await Product.create({
+      ...body,
+      retailPrice,
+      wholesalePrice,
+      // Keep legacy field populated for parts of the app that still read sellingPrice.
+      sellingPrice: retailPrice,
+    });
     return Response.json(product, { status: 201 });
   } catch (error: any) {
     console.error('Database Error:', error);
@@ -31,7 +40,19 @@ export async function PUT(request: NextRequest) {
     await connectDB();
     const body = await request.json();
     const { _id, ...updateData } = body;
-    const product = await Product.findByIdAndUpdate(_id, updateData, { new: true });
+    const retailPrice = Number(updateData.retailPrice ?? updateData.sellingPrice ?? 0);
+    const wholesalePrice = Number(updateData.wholesalePrice ?? updateData.sellingPrice ?? 0);
+
+    const product = await Product.findByIdAndUpdate(
+      _id,
+      {
+        ...updateData,
+        retailPrice,
+        wholesalePrice,
+        sellingPrice: retailPrice,
+      },
+      { new: true }
+    );
     if (!product) {
       return Response.json({ error: 'Product not found' }, { status: 404 });
     }

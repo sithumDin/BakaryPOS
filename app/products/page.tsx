@@ -7,6 +7,14 @@ function formatLKR(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function getRetailPrice(product: Product) {
+  return product.retailPrice ?? product.sellingPrice ?? 0;
+}
+
+function getWholesalePrice(product: Product) {
+  return product.wholesalePrice ?? product.sellingPrice ?? 0;
+}
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +26,8 @@ export default function ProductsPage() {
     name: '',
     category: 'Other',
     costPrice: '',
-    sellingPrice: '',
+    retailPrice: '',
+    wholesalePrice: '',
     stock: '',
     unit: 'pcs',
     lowStockThreshold: '10',
@@ -42,7 +51,7 @@ export default function ProductsPage() {
 
   const openAdd = () => {
     setEditing(null);
-    setForm({ name: '', category: 'Other', costPrice: '', sellingPrice: '', stock: '', unit: 'pcs', lowStockThreshold: '10' });
+    setForm({ name: '', category: 'Other', costPrice: '', retailPrice: '', wholesalePrice: '', stock: '', unit: 'pcs', lowStockThreshold: '10' });
     setShowModal(true);
   };
 
@@ -52,7 +61,8 @@ export default function ProductsPage() {
       name: p.name,
       category: p.category,
       costPrice: String(p.costPrice),
-      sellingPrice: String(p.sellingPrice),
+      retailPrice: String(getRetailPrice(p)),
+      wholesalePrice: String(getWholesalePrice(p)),
       stock: String(p.stock),
       unit: p.unit,
       lowStockThreshold: String(p.lowStockThreshold),
@@ -66,7 +76,8 @@ export default function ProductsPage() {
       name: form.name,
       category: form.category,
       costPrice: parseFloat(form.costPrice) || 0,
-      sellingPrice: parseFloat(form.sellingPrice) || 0,
+      retailPrice: parseFloat(form.retailPrice) || 0,
+      wholesalePrice: parseFloat(form.wholesalePrice) || 0,
       stock: parseFloat(form.stock) || 0,
       unit: form.unit,
       lowStockThreshold: parseFloat(form.lowStockThreshold) || 10,
@@ -152,8 +163,8 @@ export default function ProductsPage() {
                 <th>Name</th>
                 <th>Category</th>
                 <th style={{ textAlign: 'right' }}>Cost Price</th>
-                <th style={{ textAlign: 'right' }}>Selling Price</th>
-                <th style={{ textAlign: 'right' }}>Profit Margin</th>
+                <th style={{ textAlign: 'right' }}>Retail Price</th>
+                <th style={{ textAlign: 'right' }}>Wholesale Price</th>
                 <th style={{ textAlign: 'right' }}>Stock</th>
                 <th>Status</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
@@ -161,15 +172,16 @@ export default function ProductsPage() {
             </thead>
             <tbody>
               {filtered.map((p) => {
-                const margin = p.sellingPrice > 0 ? ((p.sellingPrice - p.costPrice) / p.sellingPrice * 100).toFixed(1) : '0';
+                const retailPrice = getRetailPrice(p);
+                const wholesalePrice = getWholesalePrice(p);
                 const isLow = p.stock <= p.lowStockThreshold;
                 return (
                   <tr key={p._id}>
                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.name}</td>
                     <td><span className="badge badge-neutral">{p.category}</span></td>
                     <td style={{ textAlign: 'right' }}>{formatLKR(p.costPrice)}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--emerald-400)' }}>{formatLKR(p.sellingPrice)}</td>
-                    <td style={{ textAlign: 'right' }}>{margin}%</td>
+                    <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--emerald-400)' }}>{formatLKR(retailPrice)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--amber-400)' }}>{formatLKR(wholesalePrice)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 600 }}>
                       {p.stock} {p.unit}
                     </td>
@@ -246,16 +258,30 @@ export default function ProductsPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Selling Price (LKR)</label>
+                  <label className="form-label">Retail Price (LKR)</label>
                   <input
                     className="form-input"
                     type="number"
                     step="0.01"
                     placeholder="0.00"
-                    value={form.sellingPrice}
-                    onChange={(e) => setForm({ ...form, sellingPrice: e.target.value })}
+                    value={form.retailPrice}
+                    onChange={(e) => setForm({ ...form, retailPrice: e.target.value })}
                   />
                 </div>
+              </div>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">Wholesale Price (LKR)</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={form.wholesalePrice}
+                    onChange={(e) => setForm({ ...form, wholesalePrice: e.target.value })}
+                  />
+                </div>
+                <div className="form-group" />
               </div>
               <div className="form-grid">
                 <div className="form-group">
@@ -279,7 +305,7 @@ export default function ProductsPage() {
                   />
                 </div>
               </div>
-              {form.costPrice && form.sellingPrice && (
+              {form.costPrice && form.retailPrice && (
                 <div style={{
                   padding: '12px 16px',
                   background: 'var(--success-soft)',
@@ -287,8 +313,8 @@ export default function ProductsPage() {
                   fontSize: '13px',
                   color: 'var(--emerald-300)',
                 }}>
-                  💰 Profit per unit: <strong>{formatLKR(parseFloat(form.sellingPrice) - parseFloat(form.costPrice))}</strong>
-                  {' '}({((parseFloat(form.sellingPrice) - parseFloat(form.costPrice)) / parseFloat(form.sellingPrice) * 100).toFixed(1)}% margin)
+                  💰 Retail profit per unit: <strong>{formatLKR(parseFloat(form.retailPrice) - parseFloat(form.costPrice))}</strong>
+                  {' '}({((parseFloat(form.retailPrice) - parseFloat(form.costPrice)) / parseFloat(form.retailPrice) * 100).toFixed(1)}% margin)
                 </div>
               )}
             </div>

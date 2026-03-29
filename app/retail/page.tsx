@@ -8,6 +8,10 @@ function formatLKR(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function getRetailPrice(product: Product) {
+  return product.retailPrice ?? product.sellingPrice ?? 0;
+}
+
 export default function RetailPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -61,7 +65,7 @@ export default function RetailPage() {
     setCart(cart.filter((c) => c.product._id !== productId));
   };
 
-  const subtotal = cart.reduce((sum, c) => sum + c.product.sellingPrice * c.qty, 0);
+  const subtotal = cart.reduce((sum, c) => sum + getRetailPrice(c.product) * c.qty, 0);
   const discountAmount = parseFloat(discount) || 0;
   const total = subtotal - discountAmount;
   const totalCost = cart.reduce((sum, c) => sum + c.product.costPrice * c.qty, 0);
@@ -77,9 +81,9 @@ export default function RetailPage() {
         product: c.product._id,
         productName: c.product.name,
         qty: c.qty,
-        unitPrice: c.product.sellingPrice,
+        unitPrice: getRetailPrice(c.product),
         costPrice: c.product.costPrice,
-        total: c.product.sellingPrice * c.qty,
+        total: getRetailPrice(c.product) * c.qty,
       })),
       subtotal,
       discount: discountAmount,
@@ -155,7 +159,7 @@ export default function RetailPage() {
                 style={{ opacity: p.stock <= 0 ? 0.5 : 1 }}
               >
                 <div className="product-name">{p.name}</div>
-                <div className="product-price">{formatLKR(p.sellingPrice)}</div>
+                <div className="product-price">{formatLKR(getRetailPrice(p))}</div>
                 <div className={`product-stock ${p.stock <= 0 ? 'out-of-stock' : ''}`}>
                   {p.stock <= 0 ? 'Out of Stock' : `${p.stock} ${p.unit} available`}
                 </div>
@@ -186,7 +190,7 @@ export default function RetailPage() {
                     <div className="cart-item-info">
                       <div className="cart-item-name">{item.product.name}</div>
                       <div className="cart-item-price">
-                        {formatLKR(item.product.sellingPrice)} × {item.qty}
+                        {formatLKR(getRetailPrice(item.product))} × {item.qty}
                       </div>
                     </div>
                     <div className="cart-item-controls">
@@ -195,7 +199,7 @@ export default function RetailPage() {
                       <button className="qty-btn" onClick={() => updateQty(item.product._id!, 1)}>+</button>
                     </div>
                     <div className="cart-item-total">
-                      {formatLKR(item.product.sellingPrice * item.qty)}
+                      {formatLKR(getRetailPrice(item.product) * item.qty)}
                     </div>
                     <button className="cart-remove" onClick={() => removeFromCart(item.product._id!)}>✕</button>
                   </div>

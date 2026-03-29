@@ -7,6 +7,8 @@ interface Sale {
   _id: string;
   invoiceNo: string;
   customerName: string;
+  cashierName?: string;
+  cashierId?: string;
   items: Array<{
     product: string;
     productName: string;
@@ -95,6 +97,26 @@ export default function ReportsPage() {
   }, 0);
   const totalProfit = sales.reduce((sum, s) => sum + s.profit, 0);
 
+  // Admin-wise sales and profit
+  const adminMap: Record<string, { name: string; salesCount: number; revenue: number; profit: number }> = {};
+  for (const sale of sales) {
+    const adminName = sale.cashierName?.trim() || 'Unknown Admin';
+    if (!adminMap[adminName]) {
+      adminMap[adminName] = {
+        name: adminName,
+        salesCount: 0,
+        revenue: 0,
+        profit: 0,
+      };
+    }
+    adminMap[adminName].salesCount += 1;
+    adminMap[adminName].revenue += sale.total;
+    adminMap[adminName].profit += sale.profit;
+  }
+  const adminPerformance = Object.values(adminMap).sort((a, b) => b.revenue - a.revenue);
+  const adminSales = adminPerformance.reduce((sum, admin) => sum + admin.salesCount, 0);
+  const adminProfit = adminPerformance.reduce((sum, admin) => sum + admin.profit, 0);
+
   // Top products
   const productMap: Record<string, { name: string; total: number; qty: number }> = {};
   for (const sale of sales) {
@@ -138,7 +160,13 @@ export default function ReportsPage() {
       cost: totalCost,
       profit: totalProfit,
       salesCount: sales.length,
-      topProducts: topProducts.slice(0, 10),
+      adminSales,
+      adminProfit,
+      adminPerformance: adminPerformance.map((admin) => ({
+        name: admin.name,
+        salesCount: admin.salesCount,
+        profit: admin.profit,
+      })),
     });
   };
 
@@ -184,7 +212,7 @@ export default function ReportsPage() {
         )}
 
         <button className="btn btn-primary" onClick={handleDownloadReport}>
-          📥 Download PDF Report
+          👁️ Preview PDF Report
         </button>
       </div>
 
@@ -304,6 +332,49 @@ export default function ReportsPage() {
             </div>
           </div>
 
+          {/* Admin Performance */}
+          <div className="card" style={{ marginBottom: '24px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
+              👨‍💼 Sales & Profit by Admin ({getPeriodLabel()})
+            </h3>
+            {adminPerformance.length === 0 ? (
+              <div className="empty-state" style={{ padding: '24px' }}>
+                <span className="icon">📭</span>
+                <h3>No Admin Sales Data</h3>
+                <p>No sales available for this period.</p>
+              </div>
+            ) : (
+              <div className="table-container" style={{ border: 'none' }}>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Admin</th>
+                      <th style={{ textAlign: 'right' }}>Sales Count</th>
+                      <th style={{ textAlign: 'right' }}>Revenue</th>
+                      <th style={{ textAlign: 'right' }}>Profit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adminPerformance.map((admin) => (
+                      <tr key={admin.name}>
+                        <td style={{ fontWeight: 600 }}>{admin.name}</td>
+                        <td style={{ textAlign: 'right' }}>{admin.salesCount}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatLKR(admin.revenue)}</td>
+                        <td style={{
+                          textAlign: 'right',
+                          fontWeight: 600,
+                          color: admin.profit >= 0 ? 'var(--emerald-400)' : 'var(--danger)'
+                        }}>
+                          {formatLKR(admin.profit)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
           {/* Sales Table */}
           <div className="card">
             <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
@@ -324,6 +395,7 @@ export default function ReportsPage() {
                       <th>Customer</th>
                       <th>Items</th>
                       <th>Type</th>
+                      <th>Admin</th>
                       <th>Payment</th>
                       <th style={{ textAlign: 'right' }}>Total</th>
                       <th style={{ textAlign: 'right' }}>Profit</th>
@@ -342,6 +414,7 @@ export default function ReportsPage() {
                             {sale.saleType}
                           </span>
                         </td>
+                        <td>{sale.cashierName || 'Unknown Admin'}</td>
                         <td style={{ textTransform: 'capitalize' }}>{sale.paymentMethod}</td>
                         <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatLKR(sale.total)}</td>
                         <td style={{

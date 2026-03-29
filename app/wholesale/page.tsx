@@ -29,6 +29,40 @@ export default function WholesalePage() {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentNote, setPaymentNote] = useState('');
 
+  const sendWholesaleWhatsApp = async (sale: any, customerPhone?: string, creditSale?: boolean) => {
+    if (!customerPhone) {
+      return { sent: false, reason: 'no-phone' };
+    }
+
+    const text = [
+      `Govi Sewana Wholesale Receipt`,
+      `Invoice: ${sale.invoiceNo}`,
+      `Customer: ${sale.customerName || 'Wholesale Customer'}`,
+      `Total: ${formatLKR(sale.total)}`,
+      creditSale ? `Status: CREDIT (Amount due ${formatLKR(sale.total)})` : `Status: PAID (${sale.paymentMethod})`,
+      `Date: ${new Date(sale.date).toLocaleString('en-LK')}`,
+      `Thank you!`,
+    ].join('\n');
+
+    try {
+      const res = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: customerPhone, text }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: 'Failed to send WhatsApp message' }));
+        return { sent: false, reason: data.error || 'Failed to send WhatsApp message' };
+      }
+
+      return { sent: true };
+    } catch (error) {
+      console.error('WhatsApp send failed:', error);
+      return { sent: false, reason: 'network-error' };
+    }
+  };
+
   useEffect(() => {
     Promise.all([
       fetch('/api/products').then((r) => r.ok ? r.json() : []),
@@ -148,6 +182,16 @@ export default function WholesalePage() {
         }
 
         generateReceipt(sale);
+        const waStatus = await sendWholesaleWhatsApp(sale, customer?.phone, isCredit);
+        if (!waStatus.sent) {
+          if (waStatus.reason === 'no-phone') {
+            alert('Sale completed. WhatsApp was skipped because customer phone is missing.');
+          } else {
+            alert(`Sale completed. WhatsApp failed: ${waStatus.reason}. Ensure this number is added as an allowed test recipient in Meta and includes country code.`);
+          }
+        } else {
+          alert('Sale completed. WhatsApp message sent successfully.');
+        }
         setCart([]);
         setDiscount('');
         setSelectedCustomer('');

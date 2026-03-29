@@ -27,28 +27,118 @@ interface DashboardData {
   cashierBreakdown: Record<string, { revenue: number; count: number }>;
 }
 
+interface Reminder {
+  _id: string;
+  text: string;
+  done: boolean;
+  createdByName?: string;
+  completedByName?: string;
+  createdAt?: string;
+}
+
 function formatLKR(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [newReminder, setNewReminder] = useState('');
+  const [savingReminder, setSavingReminder] = useState(false);
+  const [userRole, setUserRole] = useState<string>('cashier');
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'year'>('today');
 
-  useEffect(() => {
-    fetch('/api/dashboard')
+  const fetchReminders = () => {
+    fetch('/api/reminders')
       .then((r) => {
-        if (!r.ok) throw new Error('Failed to load data');
+        if (!r.ok) throw new Error('Failed to load reminders');
         return r.json();
       })
-      .then(setData)
+      .then((items) => setReminders(Array.isArray(items) ? items : []))
+      .catch((e) => {
+        console.error(e);
+        setReminders([]);
+      });
+  };
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/dashboard').then((r) => {
+        if (!r.ok) throw new Error('Failed to load data');
+        return r.json();
+      }),
+      fetch('/api/reminders').then((r) => {
+        if (!r.ok) throw new Error('Failed to load reminders');
+        return r.json();
+      }),
+      fetch('/api/auth/me')
+        .then((r) => (r.ok ? r.json() : { user: null }))
+        .catch(() => ({ user: null })),
+    ])
+      .then(([dashboardData, reminderData, me]) => {
+        setData(dashboardData);
+        setReminders(Array.isArray(reminderData) ? reminderData : []);
+        setUserRole(me?.user?.role || 'cashier');
+      })
       .catch((e) => {
         console.error(e);
         setData(null);
       })
       .finally(() => setLoading(false));
   }, []);
+
+  const handleAddReminder = async () => {
+    const text = newReminder.trim();
+    if (!text || savingReminder) return;
+
+    setSavingReminder(true);
+    try {
+      const res = await fetch('/api/reminders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: 'Failed to add reminder' }));
+        alert(data.error || 'Failed to add reminder');
+        return;
+      }
+
+      setNewReminder('');
+      fetchReminders();
+    } catch (error) {
+      console.error(error);
+      alert('Failed to add reminder');
+    } finally {
+      setSavingReminder(false);
+    }
+  };
+
+  const handleToggleReminder = async (id: string, done: boolean) => {
+    try {
+      const res = await fetch('/api/reminders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, done }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: 'Failed to update reminder' }));
+        alert(data.error || 'Failed to update reminder');
+        return;
+      }
+
+      setReminders((prev) =>
+        prev.map((item) => (item._id === id ? { ...item, done } : item))
+      );
+      fetchReminders();
+    } catch (error) {
+      console.error(error);
+      alert('Failed to update reminder');
+    }
+  };
 
   if (loading) {
     return (
@@ -294,6 +384,80 @@ export default function Dashboard() {
                   {stats.count} sale{stats.count !== 1 ? 's' : ''} today
                 </div>
               </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Reminders */}
+      <div className="card mb-24">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 700 }}>🔔 Admin Reminders</h3>
+          <span className="badge badge-neutral">{reminders.filter((r) => !r.done).length} pending</span>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
+          <input
+            className="form-input"
+            type="text"
+            placeholder={userRole === 'admin' ? 'Add reminder...' : 'Only admins can add reminders'}
+            value={newReminder}
+            onChange={(e) => setNewReminder(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleAddReminder();
+            }}
+            disabled={userRole !== 'admin' || savingReminder}
+            style={{ flex: '1 1 280px' }}
+          />
+          <button
+            className="btn btn-primary"
+            onClick={handleAddReminder}
+            disabled={userRole !== 'admin' || !newReminder.trim() || savingReminder}
+          >
+            {savingReminder ? 'Adding...' : 'Add Reminder'}
+          </button>
+        </div>
+
+        {reminders.length === 0 ? (
+          <p style={{ color: 'var(--text-dim)', fontSize: '14px' }}>No reminders yet.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {reminders.map((reminder) => (
+              <label
+                key={reminder._id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                  padding: '10px 12px',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-md)',
+                  background: reminder.done ? 'rgba(16, 185, 129, 0.08)' : 'var(--bg-input)',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={reminder.done}
+                  onChange={(e) => handleToggleReminder(reminder._id, e.target.checked)}
+                  disabled={userRole !== 'admin'}
+                  style={{ marginTop: '3px' }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      fontSize: '14px',
+                      color: reminder.done ? 'var(--text-muted)' : 'var(--text-primary)',
+                      textDecoration: reminder.done ? 'line-through' : 'none',
+                    }}
+                  >
+                    {reminder.text}
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '4px' }}>
+                    Added by {reminder.createdByName || 'Admin'}
+                    {reminder.done && reminder.completedByName ? ` · Done by ${reminder.completedByName}` : ''}
+                  </div>
+                </div>
+              </label>
             ))}
           </div>
         )}

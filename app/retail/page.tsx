@@ -20,7 +20,42 @@ export default function RetailPage() {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'transfer'>('cash');
   const [discount, setDiscount] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
   const [processing, setProcessing] = useState(false);
+
+  const sendWhatsAppReceipt = async (sale: any) => {
+    if (!customerPhone.trim()) {
+      return { sent: false, reason: 'no-phone' };
+    }
+
+    const text = [
+      `Govi Sewana Receipt`,
+      `Invoice: ${sale.invoiceNo}`,
+      `Customer: ${sale.customerName || 'Walk-in Customer'}`,
+      `Total: ${formatLKR(sale.total)}`,
+      `Payment: ${sale.paymentMethod}`,
+      `Date: ${new Date(sale.date).toLocaleString('en-LK')}`,
+      `Thank you for your purchase!`,
+    ].join('\n');
+
+    try {
+      const res = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: customerPhone, text }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: 'Failed to send WhatsApp message' }));
+        return { sent: false, reason: data.error || 'Failed to send WhatsApp message' };
+      }
+
+      return { sent: true };
+    } catch (error) {
+      console.error('WhatsApp send failed:', error);
+      return { sent: false, reason: 'network-error' };
+    }
+  };
 
   useEffect(() => {
     fetch('/api/products')
@@ -104,11 +139,23 @@ export default function RetailPage() {
       if (res.ok) {
         const sale = await res.json();
         generateReceipt(sale);
+        const waStatus = await sendWhatsAppReceipt(sale);
+
+        if (!waStatus.sent) {
+          if (waStatus.reason === 'no-phone') {
+            alert('Sale completed. WhatsApp was skipped because customer number is empty.');
+          } else {
+            alert(`Sale completed. WhatsApp failed: ${waStatus.reason}. Ensure this number is added as an allowed test recipient in Meta and includes country code.`);
+          }
+        } else {
+          alert('Sale completed. WhatsApp message sent successfully.');
+        }
 
         // Reset
         setCart([]);
         setDiscount('');
         setCustomerName('');
+        setCustomerPhone('');
         setPaymentMethod('cash');
 
         // Refresh products
@@ -215,6 +262,18 @@ export default function RetailPage() {
                   placeholder="Walk-in Customer"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
+                  style={{ marginTop: '6px' }}
+                />
+              </div>
+
+              <div className="checkout-section">
+                <label>WhatsApp Number (optional)</label>
+                <input
+                  className="form-input"
+                  type="tel"
+                  placeholder="e.g., 0761234567 or +94761234567"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
                   style={{ marginTop: '6px' }}
                 />
               </div>

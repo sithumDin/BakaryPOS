@@ -20,8 +20,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const product = await Product.create(body);
     return Response.json(product, { status: 201 });
-  } catch (error) {
-    return Response.json({ error: 'Failed to create product' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Database Error:', error);
+    return Response.json({ error: error.message || 'Failed to create product' }, { status: 500 });
   }
 }
 

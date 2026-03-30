@@ -166,10 +166,24 @@ export default function RetailPage() {
             } else {
               const waData = await waRes.json().catch(() => ({ error: 'Failed to send WhatsApp' }));
               const errorText = String(waData.error || 'Unknown error');
-              if (errorText.toLowerCase().includes('not configured')) {
+              const lowerError = errorText.toLowerCase();
+
+              if (lowerError.includes('not configured')) {
                 alert(`Sale completed. WhatsApp failed: ${errorText}. Please set WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID, then restart the server.`);
-              } else {
+              } else if (
+                lowerError.includes('session has expired') ||
+                lowerError.includes('error validating access token') ||
+                lowerError.includes('invalid oauth access token')
+              ) {
+                alert(`Sale completed. WhatsApp failed: ${errorText}. Please regenerate WHATSAPP_ACCESS_TOKEN in Meta and restart the server.`);
+              } else if (
+                lowerError.includes('invalid phone') ||
+                lowerError.includes('invalid wa id') ||
+                lowerError.includes('phone number')
+              ) {
                 alert(`Sale completed. WhatsApp failed: ${errorText}. Please ensure the phone number is correct with country code (+94).`);
+              } else {
+                alert(`Sale completed. WhatsApp failed: ${errorText}. Please check WhatsApp API credentials and try again.`);
               }
             }
           } catch (error) {

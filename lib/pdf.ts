@@ -36,16 +36,37 @@ function openPdfPreview(doc: jsPDF, fileName: string) {
 async function getLogoAsBase64(): Promise<string | null> {
   try {
     if (typeof window === 'undefined') return null;
-    const response = await fetch('/api/logo');
-    const data = await response.json();
-    if (data.url) {
-      const img = await fetch(data.url);
-      const blob = await img.blob();
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-      });
+    const sources = ['/uploads/logo.png', '/api/logo'];
+
+    for (const source of sources) {
+      const response = await fetch(source);
+
+      if (!response.ok) {
+        continue;
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+
+      if (contentType.includes('image/')) {
+        const blob = await response.blob();
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      const data = await response.json();
+      if (data.url) {
+        const img = await fetch(data.url);
+        if (!img.ok) continue;
+        const blob = await img.blob();
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      }
     }
   } catch (error) {
     console.error('Failed to load logo:', error);
@@ -510,23 +531,7 @@ export async function generateQuotation(quotation: any) {
   const pageHeight = doc.internal.pageSize.getHeight();
   let y = 15;
 
-  // Try to load logo
-  let logoBase64: string | null = null;
-  try {
-    if (typeof window !== 'undefined') {
-      const response = await fetch('/api/logo');
-      if (response.ok) {
-        const blob = await response.blob();
-        logoBase64 = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(blob);
-        });
-      }
-    }
-  } catch (error) {
-    console.error('Failed to load logo for quotation:', error);
-  }
+  const logoBase64 = await getLogoAsBase64();
 
   // ─── HEADER: Logo LEFT, Company Info RIGHT ───────────────────────────────
   const headerStartY = y;

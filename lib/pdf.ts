@@ -9,6 +9,13 @@ const COMPANY = {
   phone1: '076 821 6062',
   phone2: '071 055 6068',
   country: 'Sri Lanka',
+  bankName: 'Your Bank Name',
+  bankBranch: 'Your Branch Name',
+  accountName: 'GOVI SEWANA',
+  accountNo: 'XXXX-XXXX-XXXX',
+  website: 'www.yourwebsite.lk',
+  facebook: 'fb.com/YourPage',
+  instagram: '@YourHandle',
 };
 
 function openPdfPreview(doc: jsPDF, fileName: string) {
@@ -126,7 +133,15 @@ function addHeaderWithBranding(doc: jsPDF, w: number, y: number) {
 export async function generateReceipt(sale: Sale) {
   const doc = new jsPDF({ unit: 'mm', format: [80, 200] });
   const w = 80;
-  let y = 10;
+  let y = 8;
+  const isWholesale = sale.saleType === 'wholesale';
+  const receiptTitle = isWholesale ? 'Wholesale Receipt' : 'Retail Receipt';
+  const receiptSubtitle = isWholesale
+    ? 'Business Supply / Credit Sale'
+    : 'Customer Purchase Receipt';
+  const footerLine = isWholesale
+    ? 'Thank you for your wholesale business!'
+    : 'Thank you for your purchase!';
 
   // Try to load logo
   let logoBase64: string | null = null;
@@ -146,67 +161,108 @@ export async function generateReceipt(sale: Sale) {
     console.error('Failed to load logo for receipt:', error);
   }
 
-  // Add logo if available
+  // Header: logo LEFT, company info RIGHT
   if (logoBase64) {
     try {
-      const logoHeight = 8;
-      const logoWidth = 10;
-      const logoX = w / 2 - logoWidth / 2;
-      doc.addImage(logoBase64, 'PNG', logoX, y, logoWidth, logoHeight);
-      y += logoHeight + 2;
+      const logoW = 14;
+      const logoH = 11;
+      doc.addImage(logoBase64, 'PNG', 5, y, logoW, logoH);
+
+      const textX = 5 + logoW + 3;
+      const textMaxW = w - textX - 3;
+
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(40, 120, 60);
+      doc.text(COMPANY.name, textX, y + 4, { maxWidth: textMaxW });
+
+      doc.setFontSize(6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 100, 100);
+      doc.text(COMPANY.tagline, textX, y + 8, { maxWidth: textMaxW });
+
+      y += logoH + 3;
+
+      doc.setFontSize(6.5);
+      doc.text(COMPANY.address, w / 2, y, { align: 'center' });
+      y += 3;
+      doc.text(`Tel: ${COMPANY.phone1} | ${COMPANY.phone2}`, w / 2, y, { align: 'center' });
+      y += 3;
+      doc.text(COMPANY.country, w / 2, y, { align: 'center' });
+      y += 3;
+
+      doc.setTextColor(0, 0, 0);
     } catch (error) {
       console.error('Failed to add logo to receipt:', error);
+      y = await addHeaderWithBranding(doc, w, y);
     }
+  } else {
+    y = await addHeaderWithBranding(doc, w, y);
   }
 
-  // Header with branding
-  y = addHeaderWithBranding(doc, w, y);
-  y += 4;
-
-  // Divider
   doc.setLineWidth(0.3);
+  doc.setDrawColor(40, 120, 60);
   doc.line(5, y, w - 5, y);
   y += 4;
 
-  // Invoice info
-  doc.setFontSize(8);
-  doc.text(`Invoice: ${sale.invoiceNo}`, 5, y);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(40, 120, 60);
+  doc.text(receiptTitle, w / 2, y, { align: 'center' });
   y += 4;
-  doc.text(`Date: ${new Date(sale.date).toLocaleDateString('en-LK')}`, 5, y);
-  y += 4;
-  doc.text(`Time: ${new Date(sale.date).toLocaleTimeString('en-LK')}`, 5, y);
-  y += 4;
-  if (sale.customerName) {
-    doc.text(`Customer: ${sale.customerName}`, 5, y);
-    y += 4;
-  }
-  doc.text(`Type: ${sale.saleType.toUpperCase()}`, 5, y);
-  y += 4;
-  doc.text(`Payment: ${sale.paymentMethod.toUpperCase()}`, 5, y);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(100, 100, 100);
+  doc.text(receiptSubtitle, w / 2, y, { align: 'center' });
   y += 5;
 
-  // Divider
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(7.5);
+
+  const labelX = 5;
+  const valueX = w - 5;
+  const printRow = (label: string, value: string) => {
+    doc.setFont('helvetica', 'bold');
+    doc.text(label, labelX, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(value, valueX, y, { align: 'right' });
+    y += 4;
+  };
+
+  printRow('Invoice:', sale.invoiceNo);
+  printRow('Date:', new Date(sale.date).toLocaleDateString('en-LK'));
+  printRow('Time:', new Date(sale.date).toLocaleTimeString('en-LK'));
+  printRow(
+    'Customer:',
+    sale.customerName || (isWholesale ? 'Wholesale Customer' : 'Walk-in Customer')
+  );
+  printRow('Type:', sale.saleType.toUpperCase());
+  printRow('Payment:', sale.paymentMethod.toUpperCase());
+  printRow('Served By:', sale.cashierName || 'Cashier');
+
+  doc.setDrawColor(40, 120, 60);
   doc.line(5, y, w - 5, y);
   y += 4;
 
-  // Column headers
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
+  doc.setTextColor(40, 120, 60);
   doc.text('Item', 5, y);
   doc.text('Qty', 40, y, { align: 'center' });
   doc.text('Price', 55, y, { align: 'right' });
   doc.text('Total', w - 5, y, { align: 'right' });
-  y += 4;
+  y += 3;
+
+  doc.setDrawColor(150, 150, 150);
   doc.line(5, y, w - 5, y);
   y += 4;
 
-  // Items
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
+  doc.setTextColor(0, 0, 0);
   for (const item of sale.items) {
-    const name = item.productName.length > 18
-      ? item.productName.substring(0, 18) + '..'
-      : item.productName;
+    const name = item.productName.length > 18 ? `${item.productName.substring(0, 18)}..` : item.productName;
     doc.text(name, 5, y);
     doc.text(String(item.qty), 40, y, { align: 'center' });
     doc.text(item.unitPrice.toFixed(2), 55, y, { align: 'right' });
@@ -215,11 +271,13 @@ export async function generateReceipt(sale: Sale) {
   }
 
   y += 2;
+  doc.setDrawColor(40, 120, 60);
   doc.line(5, y, w - 5, y);
   y += 4;
 
-  // Summary
   doc.setFontSize(8);
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'normal');
   doc.text('Subtotal:', 5, y);
   doc.text(`LKR ${sale.subtotal.toFixed(2)}`, w - 5, y, { align: 'right' });
   y += 4;
@@ -232,19 +290,72 @@ export async function generateReceipt(sale: Sale) {
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
+  doc.setTextColor(40, 120, 60);
   doc.text('TOTAL:', 5, y);
   doc.text(`LKR ${sale.total.toFixed(2)}`, w - 5, y, { align: 'right' });
-  y += 6;
+  y += 7;
 
+  doc.setDrawColor(40, 120, 60);
+  doc.setLineWidth(0.4);
   doc.line(5, y, w - 5, y);
   y += 5;
 
-  // Footer
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.text('Thank you for your purchase!', w / 2, y, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(40, 120, 60);
+  doc.text(footerLine, w / 2, y, { align: 'center' });
   y += 4;
-  doc.text('Govi Sewana Agro Solution', w / 2, y, { align: 'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(80, 80, 80);
+  doc.text('We appreciate your continued support.', w / 2, y, { align: 'center' });
+  y += 5;
+
+  doc.setDrawColor(180, 180, 180);
+  doc.setLineWidth(0.2);
+  doc.line(5, y, w - 5, y);
+  y += 4;
+
+  doc.setFontSize(6.5);
+  doc.setTextColor(100, 100, 100);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Return Policy:', w / 2, y, { align: 'center' });
+  y += 3;
+  doc.setFont('helvetica', 'normal');
+  const policy = 'Items may be returned within 7 days with original receipt. Perishable goods are non-refundable.';
+  const policyLines = doc.splitTextToSize(policy, w - 12);
+  doc.text(policyLines, w / 2, y, { align: 'center' });
+  y += policyLines.length * 3.5 + 4;
+
+  doc.setDrawColor(180, 180, 180);
+  doc.line(5, y, w - 5, y);
+  y += 4;
+
+  doc.setFontSize(6.5);
+  doc.setTextColor(40, 120, 60);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Find us online:', w / 2, y, { align: 'center' });
+  y += 3;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(80, 80, 80);
+  doc.text(COMPANY.website ?? 'www.yourwebsite.lk', w / 2, y, { align: 'center' });
+  y += 3;
+  doc.text(COMPANY.facebook ?? 'fb.com/YourPage', w / 2, y, { align: 'center' });
+  y += 3;
+  doc.text(COMPANY.instagram ?? '@YourHandle', w / 2, y, { align: 'center' });
+  y += 5;
+
+  doc.setFontSize(6);
+  doc.setTextColor(180, 180, 180);
+  doc.text(COMPANY.name, w / 2, y, { align: 'center' });
+
+  if (isWholesale) {
+    y += 4;
+    doc.setTextColor(150, 150, 150);
+    doc.text('Wholesale rates applied.', w / 2, y, { align: 'center' });
+  }
 
   openPdfPreview(doc, `receipt-${sale.invoiceNo}.pdf`);
 }
@@ -431,38 +542,42 @@ export async function generateQuotation(quotation: any) {
     console.error('Failed to load logo for quotation:', error);
   }
 
-  // Add logo if available
+  // ─── HEADER: Logo LEFT, Company Info RIGHT ───────────────────────────────
+  const headerStartY = y;
+
+  // Logo (left side)
   if (logoBase64) {
     try {
-      doc.addImage(logoBase64, 'PNG', pageWidth / 2 - 10, y, 20, 15);
-      y += 18;
+      doc.addImage(logoBase64, 'PNG', 15, headerStartY, 28, 22);
     } catch (error) {
       console.error('Failed to add logo to quotation:', error);
     }
   }
 
-  // Header with branding
-  doc.setFontSize(18);
+  // Company info (right side)
+  const companyX = pageWidth - 15;
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(40, 120, 60);
-  doc.text(COMPANY.name, pageWidth / 2, y, { align: 'center' });
-  y += 7;
-
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 100, 100);
-  doc.text(COMPANY.tagline, pageWidth / 2, y, { align: 'center' });
-  y += 4;
+  doc.text(COMPANY.name, companyX, y, { align: 'right' });
+  y += 6;
 
   doc.setFontSize(9);
-  doc.text(COMPANY.address, pageWidth / 2, y, { align: 'center' });
-  y += 3;
-  doc.text(`Tel: ${COMPANY.phone1}`, pageWidth / 2, y, { align: 'center' });
-  y += 2;
-  doc.text(`${COMPANY.phone2}`, pageWidth / 2, y, { align: 'center' });
-  y += 3;
-  doc.text(COMPANY.country, pageWidth / 2, y, { align: 'center' });
-  y += 8;
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 100, 100);
+  doc.text(COMPANY.tagline, companyX, y, { align: 'right' });
+  y += 5;
+  doc.text(COMPANY.address, companyX, y, { align: 'right' });
+  y += 4;
+  doc.text(`Tel: ${COMPANY.phone1}`, companyX, y, { align: 'right' });
+  y += 4;
+  doc.text(COMPANY.phone2, companyX, y, { align: 'right' });
+  y += 4;
+  doc.text(COMPANY.country, companyX, y, { align: 'right' });
+
+  // Ensure y clears the logo height
+  y = Math.max(y, headerStartY + 26);
+  y += 6;
 
   // Divider
   doc.setDrawColor(40, 120, 60);
@@ -470,99 +585,119 @@ export async function generateQuotation(quotation: any) {
   doc.line(15, y, pageWidth - 15, y);
   y += 8;
 
-  // Left column - Company/Doc info, Right column - Customer info
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  
-  doc.text('QUOTATION', 15, y);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  y += 6;
-  
-  doc.text(`Quotation #: ${quotation.quotationNo}`, 15, y);
-  y += 5;
-  doc.text(`Date: ${new Date(quotation.createdAt).toLocaleDateString('en-LK')}`, 15, y);
-  y += 5;
-  doc.text(`Valid Until: ${quotation.validUntil}`, 15, y);
-  y += 5;
-
-  // Customer info (right side)
+  // ─── TWO-COLUMN SECTION: Company/Quotation Details LEFT, Customer RIGHT ──
+  const leftX = 15;
   const rightX = pageWidth / 2 + 10;
-  y = 28;
-  doc.setFontSize(10);
+  const colStartY = y;
+
+  // LEFT: Quotation details
+  doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text('BILL TO:', rightX, y);
-  y += 6;
-  
+  doc.setTextColor(40, 120, 60);
+  doc.text('QUOTATION', leftX, y);
+  y += 7;
+
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text(quotation.customerName || 'Customer Name', rightX, y);
-  y += 4;
-  if (quotation.customerPhone) {
-    doc.text(`Phone: ${quotation.customerPhone}`, rightX, y);
-    y += 4;
-  }
-  if (quotation.customerEmail) {
-    doc.text(`Email: ${quotation.customerEmail}`, rightX, y);
-    y += 4;
-  }
-  if (quotation.customerAddress) {
-    doc.text(`Address: ${quotation.customerAddress}`, rightX, y);
-    y += 4;
-  }
+  doc.setTextColor(0, 0, 0);
+  doc.text(`Quotation #: ${quotation.quotationNo}`, leftX, y);
+  y += 5;
+  doc.text(`Date: ${new Date(quotation.createdAt).toLocaleDateString('en-LK')}`, leftX, y);
+  y += 5;
+  doc.text(`Valid Until: ${quotation.validUntil}`, leftX, y);
+  y += 5;
 
-  // Items table
-  y = 60;
+  // RIGHT: Customer / Bill To
+  let rightY = colStartY;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(40, 120, 60);
-  
-  // Table header
+  doc.text('BILL TO:', rightX, rightY);
+  rightY += 7;
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0);
+  doc.text(quotation.customerName || 'Customer Name', rightX, rightY);
+  rightY += 5;
+  if (quotation.customerPhone) {
+    doc.text(`Phone: ${quotation.customerPhone}`, rightX, rightY);
+    rightY += 5;
+  }
+  if (quotation.customerEmail) {
+    doc.text(`Email: ${quotation.customerEmail}`, rightX, rightY);
+    rightY += 5;
+  }
+  if (quotation.customerAddress) {
+    const addrLines = doc.splitTextToSize(
+      `Address: ${quotation.customerAddress}`,
+      pageWidth / 2 - 20
+    );
+    doc.text(addrLines, rightX, rightY);
+    rightY += addrLines.length * 5;
+  }
+
+  // Move y past whichever column is taller
+  y = Math.max(y, rightY) + 8;
+
+  // Second divider
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.5);
+  doc.line(15, y, pageWidth - 15, y);
+  y += 8;
+
+  // ─── ITEMS TABLE ──────────────────────────────────────────────────────────
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(40, 120, 60);
+
   doc.text('Item Description', 15, y);
   doc.text('Qty', 95, y);
   doc.text('Unit', 115, y);
   doc.text('Unit Price', 140, y, { align: 'right' });
   doc.text('Total', pageWidth - 15, y, { align: 'right' });
-  
+
   y += 5;
-  doc.setLineWidth(0.5);
   doc.setDrawColor(40, 120, 60);
+  doc.setLineWidth(0.5);
   doc.line(15, y, pageWidth - 15, y);
   y += 6;
 
-  // Items
   doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  
+
   let totalAmount = 0;
   for (const item of quotation.items) {
-    if (y > 250) {
+    if (y > pageHeight - 70) {
+      // Add footer before new page
+      addFooter(doc, pageWidth, pageHeight);
       doc.addPage();
       y = 20;
     }
-    
+
     doc.text(item.productName, 15, y);
     doc.text(String(item.qty), 95, y);
     doc.text(item.unit || 'kg', 115, y);
     doc.text(`LKR ${item.unitPrice.toFixed(2)}`, 140, y, { align: 'right' });
     doc.text(`LKR ${item.total.toFixed(2)}`, pageWidth - 15, y, { align: 'right' });
-    
+
     totalAmount += item.total;
     y += 6;
   }
 
   y += 4;
+  doc.setDrawColor(200, 200, 200);
   doc.setLineWidth(0.5);
   doc.line(15, y, pageWidth - 15, y);
   y += 6;
 
-  // Summary
+  // ─── SUMMARY ─────────────────────────────────────────────────────────────
   const summaryX = pageWidth - 60;
-  
+
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
+  doc.setTextColor(0, 0, 0);
   doc.text('Subtotal:', summaryX, y, { align: 'right' });
   doc.text(`LKR ${quotation.subtotal.toFixed(2)}`, pageWidth - 15, y, { align: 'right' });
   y += 6;
@@ -578,35 +713,118 @@ export async function generateQuotation(quotation: any) {
   doc.setTextColor(40, 120, 60);
   doc.text('TOTAL:', summaryX, y, { align: 'right' });
   doc.text(`LKR ${quotation.total.toFixed(2)}`, pageWidth - 15, y, { align: 'right' });
+  y += 12;
 
-  // Notes
+  // ─── NOTES ───────────────────────────────────────────────────────────────
   if (quotation.notes) {
-    y += 15;
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.text('Notes:', 15, y);
-    
     y += 5;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     const noteLines = doc.splitTextToSize(quotation.notes, pageWidth - 30);
     doc.text(noteLines, 15, y);
+    y += noteLines.length * 4 + 6;
   }
 
-  // Footer
-  y = pageHeight - 20;
+  // ─── BANK / PAYMENT DETAILS ───────────────────────────────────────────────
+  if (y > pageHeight - 90) {
+    addFooter(doc, pageWidth, pageHeight);
+    doc.addPage();
+    y = 20;
+  }
+
+  doc.setDrawColor(200, 200, 200);
   doc.setLineWidth(0.5);
-  doc.setDrawColor(40, 120, 60);
   doc.line(15, y, pageWidth - 15, y);
   y += 6;
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(40, 120, 60);
+  doc.text('PAYMENT DETAILS', 15, y);
+  y += 6;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0);
+  // ⚠️ Replace these values with your actual bank details
+  const bankDetails = [
+    `Bank:          ${COMPANY.bankName ?? 'Bank Name Here'}`,
+    `Branch:        ${COMPANY.bankBranch ?? 'Branch Name Here'}`,
+    `Account Name:  ${COMPANY.accountName ?? COMPANY.name}`,
+    `Account No:    ${COMPANY.accountNo ?? 'XXXX-XXXX-XXXX'}`,
+  ];
+  for (const line of bankDetails) {
+    doc.text(line, 15, y);
+    y += 5;
+  }
+  y += 4;
+
+  // ─── TERMS & CONDITIONS ───────────────────────────────────────────────────
+  doc.setDrawColor(200, 200, 200);
+  doc.line(15, y, pageWidth - 15, y);
+  y += 6;
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(40, 120, 60);
+  doc.text('TERMS & CONDITIONS', 15, y);
+  y += 6;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(8);
+  // ⚠️ Customise these terms as needed
+  const terms = [
+    '1. This quotation is valid for the period stated above.',
+    '2. Prices are inclusive of applicable taxes unless stated otherwise.',
+    '3. Payment is due within 30 days of invoice date.',
+    '4. Goods remain the property of ' + COMPANY.name + ' until full payment is received.',
+    '5. Any disputes are subject to the jurisdiction of Sri Lankan courts.',
+  ];
+  for (const term of terms) {
+    const termLines = doc.splitTextToSize(term, pageWidth - 30);
+    doc.text(termLines, 15, y);
+    y += termLines.length * 4 + 2;
+  }
+
+  // ─── FOOTER (last page) ───────────────────────────────────────────────────
+  addFooter(doc, pageWidth, pageHeight);
+
+  // ─── PAGE NUMBERS (all pages) ────────────────────────────────────────────
+  const pageCount = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.setFont('helvetica', 'normal');
+    doc.text(
+      `Page ${i} of ${pageCount}`,
+      pageWidth - 15,
+      pageHeight - 5,
+      { align: 'right' }
+    );
+  }
+
+  openPdfPreview(doc, `quotation-${quotation.quotationNo}.pdf`);
+}
+
+// ─── REUSABLE FOOTER HELPER ───────────────────────────────────────────────────
+function addFooter(doc: jsPDF, pageWidth: number, pageHeight: number) {
+  const footerY = pageHeight - 14;
+  doc.setDrawColor(40, 120, 60);
+  doc.setLineWidth(0.5);
+  doc.line(15, footerY, pageWidth - 15, footerY);
 
   doc.setFontSize(8);
   doc.setTextColor(100, 100, 100);
   doc.setFont('helvetica', 'normal');
-  doc.text('Thank you for considering us!', pageWidth / 2, y, { align: 'center' });
-  y += 4;
-  doc.text(`Generated: ${new Date().toLocaleDateString('en-LK')}`, pageWidth / 2, y, { align: 'center' });
-
-  openPdfPreview(doc, `quotation-${quotation.quotationNo}.pdf`);
+  doc.text('Thank you for considering us!', pageWidth / 2, footerY + 5, { align: 'center' });
+  doc.text(
+    `Generated: ${new Date().toLocaleDateString('en-LK')}`,
+    15,
+    footerY + 5
+  );
 }

@@ -9,7 +9,7 @@ const QuotationSchema = new Schema(
     customerAddress: String,
     items: [
       {
-        product: mongoose.Schema.Types.ObjectId,
+        product: { type: String, default: '' },
         productName: String,
         qty: Number,
         unitPrice: Number,

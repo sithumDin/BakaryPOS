@@ -133,15 +133,11 @@ function addHeaderWithBranding(doc: jsPDF, w: number, y: number) {
 export async function generateReceipt(sale: Sale) {
   const doc = new jsPDF({ unit: 'mm', format: [80, 200] });
   const w = 80;
-  let y = 8;
+  let y = 6;
   const isWholesale = sale.saleType === 'wholesale';
   const receiptTitle = isWholesale ? 'Wholesale Receipt' : 'Retail Receipt';
-  const receiptSubtitle = isWholesale
-    ? 'Business Supply / Credit Sale'
-    : 'Customer Purchase Receipt';
-  const footerLine = isWholesale
-    ? 'Thank you for your wholesale business!'
-    : 'Thank you for your purchase!';
+  const receiptSubtitle = isWholesale ? 'Business Supply / Credit Sale' : 'Customer Purchase Receipt';
+  const footerLine = isWholesale ? 'Thank you for your wholesale business!' : 'Thank you for your purchase!';
 
   // Try to load logo
   let logoBase64: string | null = null;
@@ -161,31 +157,20 @@ export async function generateReceipt(sale: Sale) {
     console.error('Failed to load logo for receipt:', error);
   }
 
-  // Header: logo LEFT, company info RIGHT
+  // ─── LOGO + CONTACT INFO ──────────────────────────────────────────────────
   if (logoBase64) {
     try {
-      const logoW = 14;
-      const logoH = 11;
-      doc.addImage(logoBase64, 'PNG', 5, y, logoW, logoH);
-
-      const textX = 5 + logoW + 3;
-      const textMaxW = w - textX - 3;
-
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(40, 120, 60);
-      doc.text(COMPANY.name, textX, y + 4, { maxWidth: textMaxW });
-
-      doc.setFontSize(6);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100, 100, 100);
-      doc.text(COMPANY.tagline, textX, y + 8, { maxWidth: textMaxW });
-
+      // Logo centered - it already contains the company name & tagline visually
+      const logoW = 30;
+      const logoH = 20;
+      const logoX = (w - logoW) / 2;
+      doc.addImage(logoBase64, 'PNG', logoX, y, logoW, logoH);
       y += logoH + 3;
 
+      // Only show contact details below the logo (NO repeated name/tagline)
       doc.setFontSize(6.5);
-      doc.text(COMPANY.address, w / 2, y, { align: 'center' });
-      y += 3;
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 100, 100);
       doc.text(`Tel: ${COMPANY.phone1} | ${COMPANY.phone2}`, w / 2, y, { align: 'center' });
       y += 3;
       doc.text(COMPANY.country, w / 2, y, { align: 'center' });
@@ -194,9 +179,10 @@ export async function generateReceipt(sale: Sale) {
       doc.setTextColor(0, 0, 0);
     } catch (error) {
       console.error('Failed to add logo to receipt:', error);
-      y = await addHeaderWithBranding(doc, w, y);
+      y = await addHeaderWithBranding(doc, w, y); // fallback
     }
   } else {
+    // No logo - show full text header
     y = await addHeaderWithBranding(doc, w, y);
   }
 

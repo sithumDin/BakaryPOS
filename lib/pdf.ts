@@ -182,11 +182,11 @@ export async function generateReceipt(sale: Sale) {
   if (logoBase64) {
     try {
       // Logo centered - it already contains the company name & tagline visually
-      const logoW = 30;
-      const logoH = 20;
+      const logoW = 40;
+      const logoH = 26;
       const logoX = (w - logoW) / 2;
       doc.addImage(logoBase64, 'PNG', logoX, y, logoW, logoH);
-      y += logoH + 3;
+      y += logoH + 4;
 
       // Only show contact details below the logo (NO repeated name/tagline)
       doc.setFontSize(6.5);

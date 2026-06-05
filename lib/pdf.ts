@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { Sale } from './types';
+import { SHOP_BRANDING } from './branding';
 
 // ─── IMAGE COMPRESSION HELPER ─────────────────────────────────────────────
 async function compressImage(base64String: string, maxWidth: number = 500, quality: number = 0.7): Promise<string> {
@@ -29,15 +30,15 @@ async function compressImage(base64String: string, maxWidth: number = 500, quali
 
 // Company Details
 const COMPANY = {
-  name: 'GOVI SEWANA',
-  tagline: 'Agro Solution',
-  address: 'Hendiyagala Sandalankawa',
-  phone1: '076 821 6062',
-  phone2: '071 055 6068',
+  name: SHOP_BRANDING.name,
+  tagline: SHOP_BRANDING.tagline,
+  address: 'Bakery Retail & Wholesale',
+  phone1: SHOP_BRANDING.phone,
+  phone2: '',
   country: 'Sri Lanka',
   bankName: 'Commercial Bank',
   bankBranch: 'Pannala',
-  accountName: 'DASANAYAKA DMSC',
+  accountName: SHOP_BRANDING.name,
   accountNo: '8144039975',
   website: 'www.yourwebsite.lk',
   facebook: 'fb.com/YourPage',
@@ -142,8 +143,6 @@ async function addHeaderWithBrandingAndLogo(doc: jsPDF, w: number, y: number, lo
   // Phone numbers
   doc.setFontSize(7);
   doc.text(`Tel: ${COMPANY.phone1}`, w / 2, currentY, { align: 'center' });
-  currentY += 2;
-  doc.text(`${COMPANY.phone2}`, w / 2, currentY, { align: 'center' });
   currentY += 3;
   doc.text(COMPANY.country, w / 2, currentY, { align: 'center' });
   
@@ -173,7 +172,7 @@ function addHeaderWithBranding(doc: jsPDF, w: number, y: number) {
   
   // Phone numbers
   doc.setFontSize(7);
-  doc.text(`Tel: ${COMPANY.phone1} | ${COMPANY.phone2}`, w / 2, y, { align: 'center' });
+  doc.text(`Tel: ${COMPANY.phone1}`, w / 2, y, { align: 'center' });
   y += 3;
   doc.text(COMPANY.country, w / 2, y, { align: 'center' });
   
@@ -568,7 +567,7 @@ export async function generateReport(data: {
   doc.setFontSize(8);
   doc.text(`Generated on: ${new Date().toLocaleDateString('en-LK')} at ${new Date().toLocaleTimeString('en-LK')}`, 105, y, { align: 'center' });
   y += 5;
-  doc.text('Govi Sewana Agro Solution - Confidential', 105, y, { align: 'center' });
+  doc.text(`${SHOP_BRANDING.name} - Confidential`, 105, y, { align: 'center' });
 
   openPdfPreview(doc, `report-${data.title.toLowerCase().replace(/\s+/g, '-')}.pdf`);
 }

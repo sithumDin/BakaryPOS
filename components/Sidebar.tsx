@@ -3,15 +3,17 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { SHOP_BRANDING } from '@/lib/branding';
 
 const navItems = [
-  { href: '/', label: 'Dashboard', icon: '📊' },
-  { href: '/products', label: 'Products', icon: '📦' },
+  { href: '/', label: 'Dashboard', icon: '🏪' },
+  { href: '/products', label: 'Products', icon: '🥐' },
+  { href: '/inventory', label: 'Inventory', icon: '🧺' },
   { href: '/retail', label: 'Retail Sales', icon: '🛒' },
-  { href: '/wholesale', label: 'Wholesale', icon: '🏭' },
-  { href: '/quotations', label: 'Quotations', icon: '📄' },
+  { href: '/wholesale', label: 'Wholesale', icon: '📦' },
+  { href: '/quotations', label: 'Quotations', icon: '📋' },
   { href: '/customers', label: 'Customers', icon: '👥' },
-  { href: '/reports', label: 'Reports', icon: '📈' },
+  { href: '/reports', label: 'Reports', icon: '📊' },
 ];
 
 export default function Sidebar() {
@@ -319,10 +321,10 @@ export default function Sidebar() {
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" style={{ width: '100%', height: '100%', borderRadius: '8px', objectFit: 'cover' }} />
             ) : (
-              '🌿'
+              '🍞'
             )}
           </div>
-          <span style={{ fontWeight: 700, fontSize: '15px' }}>Govi Sewana</span>
+          <span style={{ fontWeight: 700, fontSize: '15px' }}>{SHOP_BRANDING.name}</span>
         </div>
         <button className="menu-btn" onClick={() => setOpen(true)}>☰</button>
       </div>
@@ -345,12 +347,12 @@ export default function Sidebar() {
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" style={{ width: '100%', height: '100%', borderRadius: '8px', objectFit: 'cover' }} />
             ) : (
-              '🌿'
+              '🍞'
             )}
           </div>
           <div className="sidebar-brand">
-            <h1>Govi Sewana</h1>
-            <p>Agribusiness POS</p>
+            <h1>{SHOP_BRANDING.name}</h1>
+            <p>{SHOP_BRANDING.tagline}</p>
           </div>
         </div>
 
@@ -399,7 +401,7 @@ export default function Sidebar() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ 
                   width: '32px', height: '32px', borderRadius: '50%', 
-                  background: 'var(--emerald-600)', color: 'white', 
+                  background: 'var(--amber-700)', color: '#fff8e7',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' 
                 }}>
                   {user.name.charAt(0)}

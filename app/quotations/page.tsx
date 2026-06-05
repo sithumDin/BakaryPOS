@@ -187,14 +187,62 @@ export default function QuotationsPage() {
   };
 
   const handleSaveQuotation = async () => {
-    if (!formData.customerName || formData.items.length === 0) {
-      alert('Please fill in customer name and add items');
+    const customerName = formData.customerName.trim();
+    const pendingItems = [...formData.items];
+
+    // If the user typed an item but did not click Add yet, include it automatically.
+    if (selectedProduct) {
+      const product = products.find((p) => p._id === selectedProduct);
+      if (product) {
+        const qty = parseInt(selectedQty) || 1;
+        const price = formData.quotationType === 'retail'
+          ? (product.retailPrice ?? product.sellingPrice ?? 0)
+          : (product.wholesalePrice ?? product.sellingPrice ?? 0);
+
+        pendingItems.push({
+          product: product._id || '',
+          productName: product.name,
+          qty,
+          unitPrice: price,
+          unit: product.unit,
+          total: price * qty,
+        });
+      }
+    }
+
+    if (manualItemName.trim() && manualItemPrice) {
+      const price = parseFloat(manualItemPrice);
+      if (!Number.isNaN(price)) {
+        pendingItems.push({
+          product: 'manual-' + Date.now(),
+          productName: manualItemName.trim(),
+          qty: 1,
+          unitPrice: price,
+          unit: '',
+          total: price,
+        });
+      }
+    }
+
+    if (!customerName || pendingItems.length === 0) {
+      alert('Please fill in customer name and add at least one item.');
       return;
     }
 
+    const subtotal = pendingItems.reduce((sum, item) => sum + item.total, 0);
+    const total = subtotal - (formData.discount || 0) + (formData.other || 0) - (formData.advance || 0);
+
+    const quotationPayload = {
+      ...formData,
+      customerName,
+      items: pendingItems,
+      subtotal,
+      total,
+    };
+
     try {
       const isUpdate = !!formData._id;
-      console.log('Saving quotation', { isUpdate, _id: formData._id, customerName: formData.customerName });
+      console.log('Saving quotation', { isUpdate, _id: formData._id, customerName });
 
       const endpoint = '/api/quotations';
       const method = isUpdate ? 'PUT' : 'POST';
@@ -203,22 +251,22 @@ export default function QuotationsPage() {
       const dataToSend = isUpdate 
         ? {
             _id: formData._id,
-            customerName: formData.customerName,
+            customerName,
             customerPhone: formData.customerPhone,
             customerEmail: formData.customerEmail,
             customerAddress: formData.customerAddress,
-            items: formData.items,
-            subtotal: formData.subtotal,
+            items: pendingItems,
+            subtotal,
             discount: formData.discount,
             other: formData.other,
             advance: formData.advance,
-            total: formData.total,
+            total,
             notes: formData.notes,
             validUntil: formData.validUntil,
             quotationType: formData.quotationType,
             status: formData.status,
           }
-        : formData;
+        : quotationPayload;
 
       const res = await fetch(endpoint, {
         method,

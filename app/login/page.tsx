@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { SHOP_BRANDING } from '@/lib/branding';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -55,7 +54,7 @@ export default function LoginPage() {
       <div className="card" style={{ maxWidth: '400px', width: '100%', padding: '40px' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <h1 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '8px' }}>
-            <span style={{ color: 'var(--emerald-400)' }}>{SHOP_BRANDING.name}</span>
+            <span style={{ color: 'var(--emerald-400)' }}>GOVI SEWANA</span>
           </h1>
           <p style={{ color: 'var(--text-muted)' }}>Secure System Login</p>
         </div>

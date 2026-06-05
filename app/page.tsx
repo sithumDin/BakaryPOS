@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { APP_BRANDING } from '@/lib/branding';
 
 interface DashboardData {
   today: { revenue: number; profit: number; count: number };
@@ -202,7 +201,7 @@ export default function Dashboard() {
     <div className="animate-fade-in">
       <div className="page-header">
         <h1>Dashboard</h1>
-        <p>Welcome back to {APP_BRANDING.name}</p>
+        <p>Welcome back to Govi Sewana Agribusiness</p>
       </div>
 
       {/* Period Tabs */}

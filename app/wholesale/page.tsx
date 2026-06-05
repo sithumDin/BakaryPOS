@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Product, CartItem, Customer, Credit } from '@/lib/types';
 import { generateReceipt } from '@/lib/pdf';
-import { SHOP_BRANDING } from '@/lib/branding';
 
 function formatLKR(amount: number) {
   return `LKR ${amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -195,7 +194,7 @@ export default function WholesalePage() {
         
         if (sendWhatsApp) {
           const waText = [
-            `${SHOP_BRANDING.name} Wholesale Receipt`,
+            `Govi Sewana Wholesale Receipt`,
             `Invoice: ${sale.invoiceNo}`,
             `Customer: ${sale.customerName || 'Wholesale Customer'}`,
             `Total: ${formatLKR(sale.total)}`,

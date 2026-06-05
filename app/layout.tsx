@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
+import { APP_BRANDING } from "@/lib/branding";
 
 export const metadata: Metadata = {
-  title: "Govi Sewana POS | Agribusiness Management",
-  description: "Complete Point of Sale system for Govi Sewana Agro Solution - manage retail sales, wholesale credit, inventory, and track profits.",
+  title: APP_BRANDING.name,
+  description: APP_BRANDING.description,
 };
 
 export default function RootLayout({

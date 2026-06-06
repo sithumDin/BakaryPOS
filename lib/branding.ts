@@ -1,5 +1,5 @@
 export const APP_BRANDING = {
-  name: 'Govi Sewana Agribusiness POS',
+  name: 'DMP Bakers POS',
   description: 'Bakery point of sale for DMP Bakers',
 };
 

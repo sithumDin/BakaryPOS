@@ -13,6 +13,16 @@ interface DashboardData {
   lowStockProducts: number;
   lowStockList: Array<{ _id: string; name: string; stock: number; unit: string }>;
   totalOutstanding: number;
+  productionSummary: {
+    totalProduced: number;
+    totalSold: number;
+    totalUnsold: number;
+    byItem: Record<string, { name: string; unit: string; produced: number; sold: number }>;
+  };
+  creditBreakdown: {
+    retail: { amount: number; count: number };
+    wholesale: { amount: number; count: number };
+  };
   recentSales: Array<{
     _id: string;
     invoiceNo: string;
@@ -62,40 +72,25 @@ export default function Dashboard() {
 
   const fetchReminders = () => {
     fetch('/api/reminders')
-      .then((r) => {
-        if (!r.ok) throw new Error('Failed to load reminders');
-        return r.json();
-      })
+      .then((r) => r.ok ? r.json() : [])
       .then((items) => setReminders(Array.isArray(items) ? items : []))
-      .catch((e) => {
-        console.error(e);
-        setReminders([]);
-      });
+      .catch(() => setReminders([]));
   };
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/dashboard').then((r) => {
-        if (!r.ok) throw new Error('Failed to load data');
-        return r.json();
-      }),
-      fetch('/api/reminders').then((r) => {
-        if (!r.ok) throw new Error('Failed to load reminders');
-        return r.json();
-      }),
+      fetch('/api/dashboard').then((r) => r.ok ? r.json() : null),
+      fetch('/api/reminders').then((r) => r.ok ? r.json() : []),
       fetch('/api/auth/me')
         .then((r) => (r.ok ? r.json() : { user: null }))
         .catch(() => ({ user: null })),
     ])
       .then(([dashboardData, reminderData, me]) => {
-        setData(dashboardData);
+        if (dashboardData) setData(dashboardData);
         setReminders(Array.isArray(reminderData) ? reminderData : []);
         setUserRole(me?.user?.role || 'cashier');
       })
-      .catch((e) => {
-        console.error(e);
-        setData(null);
-      })
+      .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, []);
 
@@ -274,6 +269,22 @@ export default function Dashboard() {
           <div className="stat-card-value" style={{ color: data.totalOutstanding > 0 ? 'var(--warning)' : 'var(--emerald-400)' }}>
             {formatLKR(data.totalOutstanding)}
           </div>
+          {data.creditBreakdown && (
+            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)' }}>
+                <span>🛒 Retail ({data.creditBreakdown.retail.count})</span>
+                <span style={{ color: data.creditBreakdown.retail.amount > 0 ? 'var(--danger)' : 'var(--emerald-400)' }}>
+                  {formatLKR(data.creditBreakdown.retail.amount)}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)' }}>
+                <span>📦 Wholesale ({data.creditBreakdown.wholesale.count})</span>
+                <span style={{ color: data.creditBreakdown.wholesale.amount > 0 ? 'var(--warning)' : 'var(--emerald-400)' }}>
+                  {formatLKR(data.creditBreakdown.wholesale.amount)}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="stat-card animate-slide-up" style={{ animationDelay: '250ms' }}>
@@ -284,6 +295,64 @@ export default function Dashboard() {
           <div className="stat-card-value">{data.totalProducts}</div>
         </div>
       </div>
+
+      {/* Today's Production vs Sales */}
+      {data.productionSummary && data.productionSummary.totalProduced > 0 && (
+        <div className="card mb-24">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 700 }}>🍞 Today&apos;s Production Overview</h3>
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                Produced: <strong style={{ color: 'var(--green-600)' }}>{data.productionSummary.totalProduced}</strong>
+              </span>
+              <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                Sold: <strong style={{ color: 'var(--info)' }}>{data.productionSummary.totalSold}</strong>
+              </span>
+              <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                Unsold: <strong style={{ color: data.productionSummary.totalUnsold > 0 ? 'var(--warning)' : 'var(--green-600)' }}>{data.productionSummary.totalUnsold}</strong>
+              </span>
+            </div>
+          </div>
+
+          {Object.keys(data.productionSummary.byItem).length === 0 ? (
+            <p style={{ color: 'var(--text-dim)', fontSize: '14px' }}>No production recorded today.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {Object.entries(data.productionSummary.byItem).map(([id, item]) => {
+                const soldPct = item.produced > 0 ? Math.min((item.sold / item.produced) * 100, 100) : 0;
+                const unsold = Math.max(0, item.produced - item.sold);
+                return (
+                  <div key={id}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 600 }}>{item.name}</span>
+                      <div style={{ display: 'flex', gap: '14px', fontSize: '12px' }}>
+                        <span style={{ color: 'var(--green-600)' }}>Made: <strong>{item.produced}</strong> {item.unit}</span>
+                        <span style={{ color: 'var(--info)' }}>Sold: <strong>{item.sold}</strong></span>
+                        <span style={{ color: unsold > 0 ? 'var(--warning)' : 'var(--green-600)' }}>
+                          Unsold: <strong>{unsold}</strong>
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{
+                        width: `${soldPct}%`,
+                        height: '100%',
+                        background: soldPct >= 100 ? 'var(--green-500)' : 'linear-gradient(90deg, var(--green-500), var(--green-400))',
+                        borderRadius: '4px',
+                        transition: 'width 0.6s ease',
+                        minWidth: soldPct > 0 ? '4px' : '0',
+                      }} />
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '3px', textAlign: 'right' }}>
+                      {soldPct.toFixed(0)}% sold
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Charts Section */}
       <div className="charts-grid">

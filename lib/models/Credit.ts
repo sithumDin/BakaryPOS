@@ -7,10 +7,12 @@ const CreditPaymentSchema = new Schema({
 }, { _id: false });
 
 const CreditSchema = new Schema({
-  customer: { type: Schema.Types.ObjectId, ref: 'Customer', required: true },
+  customer: { type: Schema.Types.ObjectId, ref: 'Customer' },
   customerName: { type: String, required: true },
+  customerPhone: { type: String, default: '' },
   sale: { type: Schema.Types.ObjectId, ref: 'Sale', required: true },
   invoiceNo: { type: String, required: true },
+  saleType: { type: String, enum: ['retail', 'wholesale'], default: 'wholesale' },
   totalAmount: { type: Number, required: true },
   paidAmount: { type: Number, default: 0 },
   remainingAmount: { type: Number, required: true },

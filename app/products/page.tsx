@@ -24,7 +24,7 @@ export default function ProductsPage() {
   const [filterCategory, setFilterCategory] = useState('');
   const [form, setForm] = useState({
     name: '',
-    category: 'Other',
+    category: 'Bread',
     costPrice: '',
     retailPrice: '',
     wholesalePrice: '',
@@ -51,7 +51,7 @@ export default function ProductsPage() {
 
   const openAdd = () => {
     setEditing(null);
-    setForm({ name: '', category: 'Other', costPrice: '', retailPrice: '', wholesalePrice: '', stock: '', unit: 'pcs', lowStockThreshold: '10' });
+    setForm({ name: '', category: 'Bread', costPrice: '', retailPrice: '', wholesalePrice: '', stock: '', unit: 'pcs', lowStockThreshold: '10' });
     setShowModal(true);
   };
 

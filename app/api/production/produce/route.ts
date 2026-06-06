@@ -1,8 +1,29 @@
 import { NextRequest } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Product from '@/lib/models/Product';
-import Ingredient from '@/lib/models/Ingredient';
 import Production from '@/lib/models/Production';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET() {
+  try {
+    await connectDB();
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const records = await Production.find({
+      productionDate: { $gte: todayStart, $lte: todayEnd },
+    })
+      .populate('product', 'name category unit')
+      .sort({ createdAt: -1 });
+
+    return Response.json(records);
+  } catch {
+    return Response.json({ error: 'Failed to fetch production records' }, { status: 500 });
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,38 +34,22 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
-    const product = await Product.findById(productId).lean();
+    const product = await Product.findById(productId).lean() as { _id: string; name: string; shelfLifeDays?: number } | null;
     if (!product) return Response.json({ error: 'Product not found' }, { status: 404 });
 
-    const ingredientsUsed = [];
-
-    // If product has recipe, deduct ingredients
-    if (product.ingredients && product.ingredients.length) {
-      for (const rec of product.ingredients) {
-        const requiredQty = (rec.qty || 0) * qty;
-        const ing = await Ingredient.findById(rec.ingredient);
-        if (!ing) return Response.json({ error: 'Ingredient not found' }, { status: 404 });
-        if (ing.stock < requiredQty) {
-          return Response.json({ error: `Insufficient ingredient: ${ing.name}` }, { status: 400 });
-        }
-        ing.stock -= requiredQty;
-        await ing.save();
-        ingredientsUsed.push({ ingredient: ing._id, qty: requiredQty });
-      }
-    }
-
-    // Increase product stock
+    // Add qty to product stock
     const updated = await Product.findByIdAndUpdate(productId, { $inc: { stock: qty } }, { new: true });
 
-    // compute expiryDate based on shelfLifeDays
     const productionDate = new Date();
     const shelfDays = product.shelfLifeDays || 0;
-    const expiryDate = shelfDays ? new Date(productionDate.getTime() + shelfDays * 24 * 60 * 60 * 1000) : null;
+    const expiryDate = shelfDays
+      ? new Date(productionDate.getTime() + shelfDays * 24 * 60 * 60 * 1000)
+      : null;
 
-    // create production record
-    await Production.create({ product: productId, qty, productionDate, expiryDate, ingredientsUsed });
+    const record = await Production.create({ product: productId, qty, productionDate, expiryDate, ingredientsUsed: [] });
+    const populated = await record.populate('product', 'name category unit');
 
-    return Response.json({ success: true, product: updated });
+    return Response.json({ success: true, product: updated, record: populated });
   } catch (error) {
     console.error('Produce error:', error);
     return Response.json({ error: 'Internal server error' }, { status: 500 });

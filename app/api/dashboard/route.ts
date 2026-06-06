@@ -3,6 +3,7 @@ import Sale from '@/lib/models/Sale';
 import Product from '@/lib/models/Product';
 import Customer from '@/lib/models/Customer';
 import Credit from '@/lib/models/Credit';
+import Production from '@/lib/models/Production';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,6 +61,42 @@ export async function GET() {
       (sum: number, c: { remainingAmount: number }) => sum + c.remainingAmount,
       0
     );
+    const retailOutstanding = pendingCredits
+      .filter((c: { saleType?: string }) => c.saleType === 'retail')
+      .reduce((sum: number, c: { remainingAmount: number }) => sum + c.remainingAmount, 0);
+    const wholesaleOutstanding = pendingCredits
+      .filter((c: { saleType?: string }) => c.saleType !== 'retail')
+      .reduce((sum: number, c: { remainingAmount: number }) => sum + c.remainingAmount, 0);
+    const creditBreakdown = {
+      retail: { amount: retailOutstanding, count: pendingCredits.filter((c: { saleType?: string }) => c.saleType === 'retail').length },
+      wholesale: { amount: wholesaleOutstanding, count: pendingCredits.filter((c: { saleType?: string }) => c.saleType !== 'retail').length },
+    };
+
+    // Today's production vs sales summary
+    const todayProductions = await Production.find({
+      productionDate: { $gte: todayStart },
+    }).populate('product', 'name unit');
+
+    const productionByItem: Record<string, { name: string; unit: string; produced: number; sold: number }> = {};
+    for (const p of todayProductions) {
+      const id = String(p.product._id);
+      if (!productionByItem[id]) {
+        productionByItem[id] = { name: p.product.name, unit: p.product.unit, produced: 0, sold: 0 };
+      }
+      productionByItem[id].produced += p.qty;
+    }
+    // Count units sold today per product
+    for (const sale of todaySales) {
+      for (const item of sale.items) {
+        const id = String(item.product);
+        if (productionByItem[id]) {
+          productionByItem[id].sold += item.qty;
+        }
+      }
+    }
+    const totalProducedToday = Object.values(productionByItem).reduce((s, v) => s + v.produced, 0);
+    const totalSoldUnitsToday = Object.values(productionByItem).reduce((s, v) => s + v.sold, 0);
+    const totalUnsoldToday = Math.max(0, totalProducedToday - totalSoldUnitsToday);
 
     // Recent sales
     const recentSales = await Sale.find({}).sort({ date: -1 }).limit(10);
@@ -102,6 +139,13 @@ export async function GET() {
       lowStockProducts: lowStockProducts.length,
       lowStockList: lowStockProducts,
       totalOutstanding,
+      creditBreakdown,
+      productionSummary: {
+        totalProduced: totalProducedToday,
+        totalSold: totalSoldUnitsToday,
+        totalUnsold: totalUnsoldToday,
+        byItem: productionByItem,
+      },
       recentSales,
       dailyProfits,
       categoryBreakdown: categoryMap,
@@ -135,6 +179,8 @@ export async function GET() {
       lowStockProducts: 0,
       lowStockList: [],
       totalOutstanding: 0,
+      creditBreakdown: { retail: { amount: 0, count: 0 }, wholesale: { amount: 0, count: 0 } },
+      productionSummary: { totalProduced: 0, totalSold: 0, totalUnsold: 0, byItem: {} },
       recentSales: [],
       dailyProfits,
       categoryBreakdown: {},

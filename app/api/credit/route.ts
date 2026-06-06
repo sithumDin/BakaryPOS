@@ -10,14 +10,16 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const customer = searchParams.get('customer');
     const status = searchParams.get('status');
+    const saleType = searchParams.get('saleType');
 
     const query: Record<string, unknown> = {};
     if (customer) query.customer = customer;
     if (status) query.status = status;
+    if (saleType) query.saleType = saleType;
 
     const credits = await Credit.find(query).sort({ createdAt: -1 });
     return Response.json(credits);
-  } catch (error) {
+  } catch {
     return Response.json({ error: 'Failed to fetch credits' }, { status: 500 });
   }
 }
@@ -28,7 +30,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const credit = await Credit.create(body);
     return Response.json(credit, { status: 201 });
-  } catch (error) {
+  } catch {
     return Response.json({ error: 'Failed to create credit record' }, { status: 500 });
   }
 }
@@ -51,7 +53,7 @@ export async function PUT(request: NextRequest) {
 
     await credit.save();
     return Response.json(credit);
-  } catch (error) {
+  } catch {
     return Response.json({ error: 'Failed to update credit' }, { status: 500 });
   }
 }

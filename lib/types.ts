@@ -58,10 +58,12 @@ export interface CreditPayment {
 
 export interface Credit {
   _id?: string;
-  customer: string;
+  customer?: string;
   customerName: string;
+  customerPhone?: string;
   sale: string;
   invoiceNo: string;
+  saleType?: 'retail' | 'wholesale';
   totalAmount: number;
   paidAmount: number;
   remainingAmount: number;
@@ -77,11 +79,13 @@ export interface CartItem {
 }
 
 export const CATEGORIES = [
-  'Fertilizers',
-  'Coco Products',
-  'Seeds',
-  'Grow Bags',
-  'Tools',
+  'Bread',
+  'Cakes',
+  'Pastries',
+  'Cookies & Biscuits',
+  'Rolls & Buns',
+  'Savories',
+  'Beverages',
   'Other',
 ] as const;
 

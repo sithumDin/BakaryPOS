@@ -21,7 +21,8 @@ export default function RetailPage() {
   const [selectedProductIndex, setSelectedProductIndex] = useState(0);
   const [selectedCartIndex, setSelectedCartIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'transfer'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer'>('cash');
+  const [isCredit, setIsCredit] = useState(false);
   const [discount, setDiscount] = useState('');
   const [otherCharges, setOtherCharges] = useState('');
   const [otherChargesDescription, setOtherChargesDescription] = useState('');
@@ -103,6 +104,11 @@ export default function RetailPage() {
   const handleCheckout = async () => {
     if (cart.length === 0) return;
 
+    if (isCredit && !customerName.trim()) {
+      alert('Please enter customer name for credit sale');
+      return;
+    }
+
     if (sendWhatsApp) {
       if (!customerPhone.trim()) {
         alert('Please enter customer WhatsApp number. Format: +94 76 180 9833');
@@ -133,7 +139,7 @@ export default function RetailPage() {
       otherChargesDescription: otherChargesDescription.trim() || 'Other Charges',
       total,
       profit,
-      paymentMethod,
+      paymentMethod: isCredit ? 'transfer' : paymentMethod,
       saleType: 'retail' as const,
       date: new Date().toISOString(),
     };
@@ -147,6 +153,26 @@ export default function RetailPage() {
 
       if (res.ok) {
         const sale = await res.json();
+
+        if (isCredit) {
+          await fetch('/api/credit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              customerName: customerName.trim(),
+              customerPhone: customerPhone.trim(),
+              sale: sale._id,
+              invoiceNo: sale.invoiceNo,
+              saleType: 'retail',
+              totalAmount: total,
+              paidAmount: 0,
+              remainingAmount: total,
+              payments: [],
+              status: 'pending',
+            }),
+          });
+        }
+
         await generateReceipt(sale);
         
         if (sendWhatsApp) {
@@ -210,6 +236,7 @@ export default function RetailPage() {
         setCustomerPhone('');
         setSendWhatsApp(false);
         setPaymentMethod('cash');
+        setIsCredit(false);
 
         // Refresh products
         const updatedProducts = await fetch('/api/products').then((r) => r.json());
@@ -392,40 +419,6 @@ export default function RetailPage() {
             </div>
           ) : (
             <>
-              {/* Customer Name */}
-              <div className="checkout-section">
-                <label>Customer Name (optional)</label>
-                <input
-                  className="form-input"
-                  type="text"
-                  placeholder="Walk-in Customer"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  style={{ marginTop: '6px' }}
-                />
-              </div>
-
-              <div className="checkout-section">
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input
-                    type="checkbox"
-                    checked={sendWhatsApp}
-                    onChange={(e) => setSendWhatsApp(e.target.checked)}
-                  />
-                  Do you want to send WhatsApp receipt to customer?
-                </label>
-                {sendWhatsApp && (
-                  <input
-                    className="form-input"
-                    type="text"
-                    placeholder="+94 76 180 9833"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    style={{ marginTop: '10px' }}
-                  />
-                )}
-              </div>
-
               <div className="cart-items">
                 {cart.map((item, index) => (
                   <div key={item.product._id} className={`cart-item ${selectedCartIndex === index ? 'keyboard-selected' : ''}`}>
@@ -455,17 +448,59 @@ export default function RetailPage() {
                 ))}
               </div>
 
-              {/* Customer Name */}
+              {/* Customer */}
               <div className="checkout-section">
-                <label>Customer Name (optional)</label>
+                <label>Customer Name {isCredit ? <span style={{ color: 'var(--danger)' }}>*</span> : '(optional)'}</label>
                 <input
                   className="form-input"
                   type="text"
-                  placeholder="Walk-in Customer"
+                  placeholder={isCredit ? 'Required for credit sale' : 'Walk-in Customer'}
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   style={{ marginTop: '6px' }}
                 />
+              </div>
+
+              <div className="checkout-section">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="checkbox"
+                    checked={sendWhatsApp}
+                    onChange={(e) => setSendWhatsApp(e.target.checked)}
+                  />
+                  Send WhatsApp receipt?
+                </label>
+                {sendWhatsApp && (
+                  <input
+                    className="form-input"
+                    type="text"
+                    placeholder="+94 76 180 9833"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    style={{ marginTop: '10px' }}
+                  />
+                )}
+              </div>
+
+              {/* Credit Toggle */}
+              <div className="checkout-section">
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+                  onClick={() => setIsCredit(!isCredit)}
+                >
+                  <div style={{
+                    width: '40px', height: '22px', borderRadius: '11px',
+                    background: isCredit ? 'var(--warning)' : 'var(--border-color)',
+                    position: 'relative', transition: 'background 0.2s',
+                  }}>
+                    <div style={{
+                      width: '18px', height: '18px', borderRadius: '50%', background: 'white',
+                      position: 'absolute', top: '2px',
+                      left: isCredit ? '20px' : '2px', transition: 'left 0.2s',
+                    }} />
+                  </div>
+                  <span style={{ fontSize: '14px', fontWeight: 600 }}>Credit Sale</span>
+                </div>
               </div>
 
               {/* Discount */}
@@ -508,20 +543,22 @@ export default function RetailPage() {
               )}
 
               {/* Payment Method */}
-              <div className="checkout-section">
-                <label>Payment Method</label>
-                <div className="payment-methods">
-                  {(['cash', 'card', 'transfer'] as const).map((m) => (
-                    <button
-                      key={m}
-                      className={`payment-method ${paymentMethod === m ? 'active' : ''}`}
-                      onClick={() => setPaymentMethod(m)}
-                    >
-                      {m === 'cash' ? '💵 Cash' : m === 'card' ? '💳 Card' : '🏦 Transfer'}
-                    </button>
-                  ))}
+              {!isCredit && (
+                <div className="checkout-section">
+                  <label>Payment Method</label>
+                  <div className="payment-methods">
+                    {(['cash', 'transfer'] as const).map((m) => (
+                      <button
+                        key={m}
+                        className={`payment-method ${paymentMethod === m ? 'active' : ''}`}
+                        onClick={() => setPaymentMethod(m)}
+                      >
+                        {m === 'cash' ? '💵 Cash' : '🏦 Transfer'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Summary */}
               <div className="cart-summary">
@@ -545,12 +582,19 @@ export default function RetailPage() {
                   <span>Total</span>
                   <span>{formatLKR(total)}</span>
                 </div>
-                <div className="cart-summary-row" style={{ marginTop: '4px' }}>
-                  <span>Profit</span>
-                  <span style={{ color: profit >= 0 ? 'var(--emerald-400)' : 'var(--danger)' }}>
-                    {formatLKR(profit)}
-                  </span>
-                </div>
+                {isCredit ? (
+                  <div className="cart-summary-row" style={{ marginTop: '4px' }}>
+                    <span>⚠️ Credit Sale</span>
+                    <span style={{ color: 'var(--warning)' }}>Due: {formatLKR(total)}</span>
+                  </div>
+                ) : (
+                  <div className="cart-summary-row" style={{ marginTop: '4px' }}>
+                    <span>Profit</span>
+                    <span style={{ color: profit >= 0 ? 'var(--emerald-400)' : 'var(--danger)' }}>
+                      {formatLKR(profit)}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="cart-actions">
@@ -560,7 +604,7 @@ export default function RetailPage() {
                   disabled={processing}
                   style={{ width: '100%' }}
                 >
-                  {processing ? 'Processing...' : `💳 Complete Sale — ${formatLKR(total)}`}
+                  {processing ? 'Processing...' : isCredit ? `📋 Credit Sale — ${formatLKR(total)}` : `💵 Complete Sale — ${formatLKR(total)}`}
                 </button>
                 <button
                   className="btn btn-secondary"

@@ -23,7 +23,7 @@ export default function WholesalePage() {
   const [selectedProductIndex, setSelectedProductIndex] = useState(0);
   const [selectedCartIndex, setSelectedCartIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'transfer'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer'>('cash');
   const [discount, setDiscount] = useState('');
   const [otherCharges, setOtherCharges] = useState('');
   const [otherChargesDescription, setOtherChargesDescription] = useState('');
@@ -181,6 +181,7 @@ export default function WholesalePage() {
               customerName: customer?.name,
               sale: sale._id,
               invoiceNo: sale.invoiceNo,
+              saleType: 'wholesale',
               totalAmount: total,
               paidAmount: 0,
               remainingAmount: total,
@@ -604,22 +605,20 @@ export default function WholesalePage() {
                   </div>
                 )}
                 {!isCredit && (
-                  <>
-                    <div className="checkout-section">
-                      <label>Payment Method</label>
-                      <div className="payment-methods">
-                        {(['cash', 'card', 'transfer'] as const).map((m) => (
-                          <button
-                            key={m}
-                            className={`payment-method ${paymentMethod === m ? 'active' : ''}`}
-                            onClick={() => setPaymentMethod(m)}
-                          >
-                            {m === 'cash' ? '💵' : m === 'card' ? '💳' : '🏦'} {m}
-                          </button>
-                        ))}
-                      </div>
+                  <div className="checkout-section">
+                    <label>Payment Method</label>
+                    <div className="payment-methods">
+                      {(['cash', 'transfer'] as const).map((m) => (
+                        <button
+                          key={m}
+                          className={`payment-method ${paymentMethod === m ? 'active' : ''}`}
+                          onClick={() => setPaymentMethod(m)}
+                        >
+                          {m === 'cash' ? '💵 Cash' : '🏦 Transfer'}
+                        </button>
+                      ))}
                     </div>
-                  </>
+                  </div>
                 )}
 
                 <div className="cart-summary">

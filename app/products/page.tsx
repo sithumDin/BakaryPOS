@@ -36,7 +36,7 @@ export default function ProductsPage() {
   const fetchProducts = () => {
     fetch('/api/products')
       .then((r) => {
-        if (!r.ok) throw new Error();
+        if (!r.ok) throw new Error('Failed to fetch products');
         return r.json();
       })
       .then((data) => setProducts(Array.isArray(data) ? data : []))

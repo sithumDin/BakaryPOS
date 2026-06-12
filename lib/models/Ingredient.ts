@@ -6,6 +6,7 @@ const IngredientSchema = new Schema({
   stock: { type: Number, required: true, default: 0 },
   unit: { type: String, required: true, default: 'kg' },
   lowStockThreshold: { type: Number, default: 5 },
+  dailyUsageTarget: { type: Number, default: 0 },
   weeklyUsageTarget: { type: Number, default: 0 },
   monthlyUsageTarget: { type: Number, default: 0 },
   supplier: { type: String, default: '' },

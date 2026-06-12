@@ -12,6 +12,12 @@ function getPeriodStart(period: string) {
     return new Date(now.getFullYear(), now.getMonth(), 1);
   }
 
+  if (period === 'day') {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    return start;
+  }
+
   // default weekly window
   const start = new Date(now);
   start.setDate(start.getDate() - start.getDay());
@@ -47,6 +53,44 @@ async function getUsageSummary(period: string) {
   return Object.values(usageMap).sort((a, b) => b.qty - a.qty);
 }
 
+async function getDailySummary(ingredients: any[]) {
+  const start = getPeriodStart('day');
+  const transactions = await InventoryTransaction.find({
+    transactionDate: { $gte: start },
+  }).populate('ingredient', 'name unit');
+
+  const txMap: Record<string, { topup: number; used: number }> = {};
+
+  for (const tx of transactions) {
+    const ingredient = tx.ingredient as any;
+    const key = ingredient?._id?.toString() || tx.ingredient.toString();
+    if (!txMap[key]) txMap[key] = { topup: 0, used: 0 };
+    if (tx.qty > 0) {
+      txMap[key].topup += tx.qty;
+    } else {
+      txMap[key].used += Math.abs(tx.qty);
+    }
+  }
+
+  return ingredients
+    .map((ing) => {
+      const key = ing._id.toString();
+      const { topup = 0, used = 0 } = txMap[key] || {};
+      const remaining = ing.stock;
+      const openingStock = remaining - topup + used;
+      return {
+        ingredientId: key,
+        name: ing.name,
+        unit: ing.unit,
+        openingStock: Math.max(0, openingStock),
+        topupToday: topup,
+        usedToday: used,
+        remaining,
+      };
+    })
+    .filter((item) => item.openingStock > 0 || item.topupToday > 0 || item.usedToday > 0 || item.remaining > 0);
+}
+
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
@@ -55,12 +99,14 @@ export async function GET(request: NextRequest) {
 
     const ingredients = await Ingredient.find({}).sort({ createdAt: -1 });
     const lowStockItems = ingredients.filter((item) => item.stock <= item.lowStockThreshold);
-    const usageSummary = await getUsageSummary(period);
+    const usageSummary = period !== 'day' ? await getUsageSummary(period) : [];
+    const dailySummary = period === 'day' ? await getDailySummary(ingredients) : [];
 
     return Response.json({
       ingredients,
       lowStockItems,
       usageSummary,
+      dailySummary,
       period,
     });
   } catch (error) {
@@ -114,6 +160,7 @@ export async function POST(request: NextRequest) {
       stock: Number(body.stock) || 0,
       unit: body.unit || 'kg',
       lowStockThreshold: Number(body.lowStockThreshold) || 5,
+      dailyUsageTarget: Number(body.dailyUsageTarget) || 0,
       weeklyUsageTarget: Number(body.weeklyUsageTarget) || 0,
       monthlyUsageTarget: Number(body.monthlyUsageTarget) || 0,
       supplier: body.supplier || '',
@@ -145,6 +192,7 @@ export async function PUT(request: NextRequest) {
         stock: Number(data.stock) || 0,
         unit: data.unit,
         lowStockThreshold: Number(data.lowStockThreshold) || 5,
+        dailyUsageTarget: Number(data.dailyUsageTarget) || 0,
         weeklyUsageTarget: Number(data.weeklyUsageTarget) || 0,
         monthlyUsageTarget: Number(data.monthlyUsageTarget) || 0,
         supplier: data.supplier || '',

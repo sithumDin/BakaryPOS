@@ -76,7 +76,7 @@ export default function ReportsPage() {
 
     fetch(`/api/sales?${params}`)
       .then((r) => {
-        if (!r.ok) throw new Error();
+        if (!r.ok) throw new Error("Fetch failed");
         return r.json();
       })
       .then((data) => setSales(Array.isArray(data) ? data : []))

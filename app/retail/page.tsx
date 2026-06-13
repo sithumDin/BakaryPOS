@@ -28,6 +28,7 @@ export default function RetailPage() {
   const [otherChargesDescription, setOtherChargesDescription] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [creditUpfrontPayment, setCreditUpfrontPayment] = useState('');
   const [sendWhatsApp, setSendWhatsApp] = useState(false);
   const [processing, setProcessing] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -99,6 +100,8 @@ export default function RetailPage() {
   const total = subtotal - discountAmount + otherChargesAmount;
   const totalCost = cart.reduce((sum, c) => sum + c.product.costPrice * c.qty, 0);
   const profit = total - totalCost - otherChargesAmount;
+  const upfrontAmount = isCredit ? Math.min(parseFloat(creditUpfrontPayment) || 0, total) : 0;
+  const creditDue = isCredit ? Math.max(0, total - upfrontAmount) : 0;
   const whatsappPhonePattern = /^\+94\s\d{2}\s\d{3}\s\d{4}$/;
 
   const handleCheckout = async () => {
@@ -165,10 +168,10 @@ export default function RetailPage() {
               invoiceNo: sale.invoiceNo,
               saleType: 'retail',
               totalAmount: total,
-              paidAmount: 0,
-              remainingAmount: total,
-              payments: [],
-              status: 'pending',
+              paidAmount: upfrontAmount,
+              remainingAmount: creditDue,
+              payments: upfrontAmount > 0 ? [{ amount: upfrontAmount, date: new Date().toISOString(), note: 'Upfront payment at sale' }] : [],
+              status: creditDue <= 0 ? 'paid' : upfrontAmount > 0 ? 'partial' : 'pending',
             }),
           });
         }
@@ -234,6 +237,7 @@ export default function RetailPage() {
         setOtherChargesDescription('');
         setCustomerName('');
         setCustomerPhone('');
+        setCreditUpfrontPayment('');
         setSendWhatsApp(false);
         setPaymentMethod('cash');
         setIsCredit(false);
@@ -503,6 +507,49 @@ export default function RetailPage() {
                 </div>
               </div>
 
+              {/* Upfront Payment for Credit Sales */}
+              {isCredit && (
+                <div className="checkout-section">
+                  <label>Upfront Payment (LKR) <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    min={0}
+                    max={total}
+                    value={creditUpfrontPayment}
+                    onChange={(e) => setCreditUpfrontPayment(e.target.value)}
+                    style={{ marginTop: '6px' }}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      type="button"
+                      onClick={() => setCreditUpfrontPayment((total / 2).toFixed(2))}
+                    >
+                      Pay Half
+                    </button>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      type="button"
+                      onClick={() => setCreditUpfrontPayment(total.toFixed(2))}
+                    >
+                      Pay Full
+                    </button>
+                    {creditUpfrontPayment && (
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        type="button"
+                        onClick={() => setCreditUpfrontPayment('')}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Discount */}
               <div className="checkout-section">
                 <label>Discount (LKR)</label>
@@ -583,10 +630,20 @@ export default function RetailPage() {
                   <span>{formatLKR(total)}</span>
                 </div>
                 {isCredit ? (
-                  <div className="cart-summary-row" style={{ marginTop: '4px' }}>
-                    <span>⚠️ Credit Sale</span>
-                    <span style={{ color: 'var(--warning)' }}>Due: {formatLKR(total)}</span>
-                  </div>
+                  <>
+                    {upfrontAmount > 0 && (
+                      <div className="cart-summary-row" style={{ marginTop: '4px' }}>
+                        <span>💵 Paid Now</span>
+                        <span style={{ color: 'var(--emerald-400)' }}>{formatLKR(upfrontAmount)}</span>
+                      </div>
+                    )}
+                    <div className="cart-summary-row" style={{ marginTop: '4px' }}>
+                      <span>⚠️ Credit Due</span>
+                      <span style={{ color: creditDue > 0 ? 'var(--warning)' : 'var(--emerald-400)' }}>
+                        {formatLKR(creditDue)}
+                      </span>
+                    </div>
+                  </>
                 ) : (
                   <div className="cart-summary-row" style={{ marginTop: '4px' }}>
                     <span>Profit</span>
@@ -604,7 +661,13 @@ export default function RetailPage() {
                   disabled={processing}
                   style={{ width: '100%' }}
                 >
-                  {processing ? 'Processing...' : isCredit ? `📋 Credit Sale — ${formatLKR(total)}` : `💵 Complete Sale — ${formatLKR(total)}`}
+                  {processing ? 'Processing...' : isCredit
+                    ? creditDue <= 0
+                      ? `✅ Full Payment — ${formatLKR(total)}`
+                      : upfrontAmount > 0
+                        ? `📋 Credit Sale — Pay ${formatLKR(upfrontAmount)}, Due ${formatLKR(creditDue)}`
+                        : `📋 Credit Sale — Due ${formatLKR(total)}`
+                    : `💵 Complete Sale — ${formatLKR(total)}`}
                 </button>
                 <button
                   className="btn btn-secondary"

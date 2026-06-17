@@ -1,10 +1,10 @@
 export const APP_BRANDING = {
-  name: 'DMP Bakers POS',
-  description: 'Bakery point of sale for DMP Bakers',
+  name: 'DAM Bakers POS',
+  description: 'Bakery point of sale for DAM Bakers',
 };
 
 export const SHOP_BRANDING = {
-  name: 'DMP Bakers',
+  name: 'DAM Bakers',
   tagline: 'Bakery POS',
   phone: '0761809833',
 };

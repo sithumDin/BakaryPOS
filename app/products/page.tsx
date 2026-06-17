@@ -222,7 +222,7 @@ export default function ProductsPage() {
                 <input
                   className="form-input"
                   type="text"
-                  placeholder="e.g., Organic Fertilizer"
+                  placeholder="e.g., Butter Bun"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                 />

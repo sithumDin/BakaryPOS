@@ -156,7 +156,7 @@ export default function WholesalePage() {
       otherChargesDescription: otherChargesDescription.trim() || 'Other Charges',
       total,
       profit,
-      paymentMethod: isCredit ? 'transfer' : paymentMethod,
+      paymentMethod: isCredit ? 'credit' : paymentMethod,
       saleType: 'wholesale' as const,
       date: new Date().toISOString(),
     };

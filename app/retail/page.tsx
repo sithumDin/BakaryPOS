@@ -142,7 +142,7 @@ export default function RetailPage() {
       otherChargesDescription: otherChargesDescription.trim() || 'Other Charges',
       total,
       profit,
-      paymentMethod: isCredit ? 'transfer' : paymentMethod,
+      paymentMethod: isCredit ? 'credit' : paymentMethod,
       saleType: 'retail' as const,
       date: new Date().toISOString(),
     };

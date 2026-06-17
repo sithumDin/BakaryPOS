@@ -42,7 +42,7 @@ export interface Sale {
   otherChargesDescription?: string;
   total: number;
   profit: number;
-  paymentMethod: 'cash' | 'card' | 'transfer';
+  paymentMethod: 'cash' | 'card' | 'transfer' | 'credit';
   saleType: 'retail' | 'wholesale';
   cashierId?: string;
   cashierName?: string;

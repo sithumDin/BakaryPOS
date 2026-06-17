@@ -124,7 +124,7 @@ async function addHeaderWithBrandingAndLogo(doc: jsPDF, w: number, y: number, lo
   // Company name
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(40, 120, 60);
+  doc.setTextColor(160, 100, 35);
   doc.text(COMPANY.name, w / 2, currentY, { align: 'center' });
   currentY += 5;
   
@@ -154,7 +154,7 @@ function addHeaderWithBranding(doc: jsPDF, w: number, y: number) {
   // Company name
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(40, 120, 60);
+  doc.setTextColor(160, 100, 35);
   doc.text(COMPANY.name, w / 2, y, { align: 'center' });
   y += 5;
   
@@ -238,13 +238,13 @@ export async function generateReceipt(sale: Sale) {
   }
 
   doc.setLineWidth(0.3);
-  doc.setDrawColor(40, 120, 60);
+  doc.setDrawColor(160, 100, 35);
   doc.line(5, y, w - 5, y);
   y += 4;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.setTextColor(40, 120, 60);
+  doc.setTextColor(160, 100, 35);
   doc.text(receiptTitle, w / 2, y, { align: 'center' });
   y += 4;
 
@@ -278,13 +278,13 @@ export async function generateReceipt(sale: Sale) {
   printRow('Payment:', sale.paymentMethod.toUpperCase());
   printRow('Served By:', sale.cashierName || 'Cashier');
 
-  doc.setDrawColor(40, 120, 60);
+  doc.setDrawColor(160, 100, 35);
   doc.line(5, y, w - 5, y);
   y += 4;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
-  doc.setTextColor(40, 120, 60);
+  doc.setTextColor(160, 100, 35);
   doc.text('Item', 5, y);
   doc.text('Qty', 40, y, { align: 'center' });
   doc.text('Price', 55, y, { align: 'right' });
@@ -308,7 +308,7 @@ export async function generateReceipt(sale: Sale) {
   }
 
   y += 2;
-  doc.setDrawColor(40, 120, 60);
+  doc.setDrawColor(160, 100, 35);
   doc.line(5, y, w - 5, y);
   y += 4;
 
@@ -336,26 +336,26 @@ export async function generateReceipt(sale: Sale) {
   }
 
   y += 2;
-  doc.setDrawColor(40, 120, 60);
+  doc.setDrawColor(160, 100, 35);
   doc.setLineWidth(0.5);
   doc.line(5, y, w - 5, y);
   y += 3;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.setTextColor(40, 120, 60);
+  doc.setTextColor(160, 100, 35);
   doc.text('TOTAL:', 5, y);
   doc.text(`LKR ${sale.total.toFixed(2)}`, w - 5, y, { align: 'right' });
 
 
-  doc.setDrawColor(40, 120, 60);
+  doc.setDrawColor(160, 100, 35);
   doc.setLineWidth(0.4);
   doc.line(5, y, w - 5, y);
   y += 5;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  doc.setTextColor(40, 120, 60);
+  doc.setTextColor(160, 100, 35);
   doc.text(footerLine, w / 2, y, { align: 'center' });
   y += 4;
 
@@ -386,7 +386,7 @@ export async function generateReceipt(sale: Sale) {
   y += 4;
 
   doc.setFontSize(6.5);
-  doc.setTextColor(40, 120, 60);
+  doc.setTextColor(160, 100, 35);
   doc.setFont('helvetica', 'bold');
   doc.text('Find us online:', w / 2, y, { align: 'center' });
   y += 3;
@@ -466,7 +466,7 @@ export async function generateReport(data: {
   // Header with branding
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(40, 120, 60);
+  doc.setTextColor(160, 100, 35);
   doc.text(COMPANY.name, 105, y, { align: 'center' });
   y += 7;
 
@@ -495,7 +495,7 @@ export async function generateReport(data: {
 
   // Divider
   doc.setLineWidth(0.5);
-  doc.setDrawColor(40, 120, 60);
+  doc.setDrawColor(160, 100, 35);
   doc.line(20, y, 190, y);
   y += 10;
 
@@ -596,7 +596,7 @@ export async function generateQuotation(quotation: any) {
   const companyX = pageWidth - 15;
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(40, 120, 60);
+  doc.setTextColor(160, 100, 35);
   doc.text(COMPANY.name, companyX, y, { align: 'right' });
   y += 6;
 
@@ -618,7 +618,7 @@ export async function generateQuotation(quotation: any) {
   y += 6;
 
   // Divider
-  doc.setDrawColor(40, 120, 60);
+  doc.setDrawColor(160, 100, 35);
   doc.setLineWidth(1);
   doc.line(15, y, pageWidth - 15, y);
   y += 8;
@@ -631,7 +631,7 @@ export async function generateQuotation(quotation: any) {
   // LEFT: Quotation details
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(40, 120, 60);
+  doc.setTextColor(160, 100, 35);
   doc.text('QUOTATION', leftX, y);
   y += 7;
 
@@ -649,7 +649,7 @@ export async function generateQuotation(quotation: any) {
   let rightY = colStartY;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(40, 120, 60);
+  doc.setTextColor(160, 100, 35);
   doc.text('BILL TO:', rightX, rightY);
   rightY += 7;
 
@@ -687,7 +687,7 @@ export async function generateQuotation(quotation: any) {
   // ─── ITEMS TABLE ──────────────────────────────────────────────────────────
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(40, 120, 60);
+  doc.setTextColor(160, 100, 35);
 
   doc.text('Item Description', 15, y);
   doc.text('Qty', 95, y);
@@ -696,7 +696,7 @@ export async function generateQuotation(quotation: any) {
   doc.text('Total', pageWidth - 15, y, { align: 'right' });
 
   y += 5;
-  doc.setDrawColor(40, 120, 60);
+  doc.setDrawColor(160, 100, 35);
   doc.setLineWidth(0.5);
   doc.line(15, y, pageWidth - 15, y);
   y += 6;
@@ -761,7 +761,7 @@ export async function generateQuotation(quotation: any) {
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.setTextColor(40, 120, 60);
+  doc.setTextColor(160, 100, 35);
   doc.text('TOTAL:', summaryX, y, { align: 'right' });
   doc.text(`LKR ${quotation.total.toFixed(2)}`, pageWidth - 15, y, { align: 'right' });
   y += 12;
@@ -794,7 +794,7 @@ export async function generateQuotation(quotation: any) {
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(40, 120, 60);
+  doc.setTextColor(160, 100, 35);
   doc.text('PAYMENT DETAILS', 15, y);
   y += 6;
 
@@ -820,7 +820,7 @@ export async function generateQuotation(quotation: any) {
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(40, 120, 60);
+  doc.setTextColor(160, 100, 35);
   doc.text('TERMS & CONDITIONS', 15, y);
   y += 6;
 
@@ -865,7 +865,7 @@ export async function generateQuotation(quotation: any) {
 // ─── REUSABLE FOOTER HELPER ───────────────────────────────────────────────────
 function addFooter(doc: jsPDF, pageWidth: number, pageHeight: number) {
   const footerY = pageHeight - 14;
-  doc.setDrawColor(40, 120, 60);
+  doc.setDrawColor(160, 100, 35);
   doc.setLineWidth(0.5);
   doc.line(15, footerY, pageWidth - 15, footerY);
 

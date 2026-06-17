@@ -7,16 +7,17 @@ import { SHOP_BRANDING } from '@/lib/branding';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: '🏪' },
+  { href: '/retail', label: 'Retail Sales', icon: '🛒' },
+  { href: '/wholesale', label: 'Wholesale', icon: '📦' },
   { href: '/products', label: 'Products', icon: '🥐' },
   { href: '/production', label: 'Daily Production', icon: '🍞' },
   { href: '/machines', label: 'Machines', icon: '☕' },
   { href: '/inventory', label: 'Inventory', icon: '🧺' },
-  { href: '/retail', label: 'Retail Sales', icon: '🛒' },
-  { href: '/wholesale', label: 'Wholesale', icon: '📦' },
   { href: '/credits', label: 'Credit Tracker', icon: '💳' },
   { href: '/quotations', label: 'Quotations', icon: '📋' },
   { href: '/customers', label: 'Customers', icon: '👥' },
   { href: '/reports', label: 'Reports', icon: '📊' },
+  { href: '/users', label: 'Users', icon: '👤', adminOnly: true },
 ];
 
 export default function Sidebar() {
@@ -361,6 +362,7 @@ export default function Sidebar() {
 
         <nav className="sidebar-nav">
           {navItems.map((item) => {
+            if ((item as any).adminOnly && user?.role !== 'admin') return null;
             const isActive = pathname === item.href;
             return (
               <Link

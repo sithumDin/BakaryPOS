@@ -89,4 +89,4 @@ export const CATEGORIES = [
   'Other',
 ] as const;
 
-export const UNITS = ['kg', 'g', 'L', 'ml', 'pcs', 'bags', 'packs'] as const;
+export const UNITS = ['kg', 'g', 'L', 'l', 'ml', 'pcs', 'bags', 'packs', 'cups'] as const;

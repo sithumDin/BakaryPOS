@@ -22,6 +22,8 @@ export default function ProductsPage() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
+  const [topupProduct, setTopupProduct] = useState<Product | null>(null);
+  const [topupAmount, setTopupAmount] = useState('');
   const [form, setForm] = useState({
     name: '',
     category: 'Bread',
@@ -95,6 +97,29 @@ export default function ProductsPage() {
     } else {
       const { error } = await res.json().catch(() => ({ error: 'Failed to connect to database' }));
       alert(`Error saving product: ${error || 'Unknown error'}. Did you add your MONGODB_URI to .env.local?`);
+    }
+  };
+
+  const openTopup = (p: Product) => {
+    setTopupProduct(p);
+    setTopupAmount('');
+  };
+
+  const handleTopup = async () => {
+    if (!topupProduct) return;
+    const amount = parseFloat(topupAmount);
+    if (!amount || amount <= 0) return;
+    const res = await fetch('/api/products', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ _id: topupProduct._id, topup: amount }),
+    });
+    if (res.ok) {
+      setTopupProduct(null);
+      fetchProducts();
+    } else {
+      const { error } = await res.json().catch(() => ({ error: 'Unknown error' }));
+      alert(`Top up failed: ${error}`);
     }
   };
 
@@ -196,6 +221,7 @@ export default function ProductsPage() {
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                        <button className="btn btn-success btn-sm" onClick={() => openTopup(p)} title="Top Up Stock">+</button>
                         <button className="btn btn-secondary btn-sm" onClick={() => openEdit(p)}>✏️</button>
                         <button className="btn btn-danger btn-sm" onClick={() => handleDelete(p._id!)}>🗑️</button>
                       </div>
@@ -205,6 +231,49 @@ export default function ProductsPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Top Up Modal */}
+      {topupProduct && (
+        <div className="modal-overlay" onClick={() => setTopupProduct(null)}>
+          <div className="modal" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Top Up Stock</h2>
+              <button className="modal-close" onClick={() => setTopupProduct(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
+                <strong style={{ color: 'var(--text-primary)' }}>{topupProduct.name}</strong>
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', padding: '12px 16px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', fontSize: '14px' }}>
+                <span>Current: <strong>{topupProduct.stock} {topupProduct.unit}</strong></span>
+                <span style={{ color: 'var(--text-muted)' }}>+</span>
+                <span style={{ color: 'var(--emerald-400)' }}>Top Up: <strong>{parseFloat(topupAmount) || 0} {topupProduct.unit}</strong></span>
+                <span style={{ color: 'var(--text-muted)' }}>=</span>
+                <span style={{ color: 'var(--amber-400)' }}>New: <strong>{topupProduct.stock + (parseFloat(topupAmount) || 0)} {topupProduct.unit}</strong></span>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Top Up Amount</label>
+                <input
+                  className="form-input"
+                  type="number"
+                  min="1"
+                  placeholder="Enter quantity to add"
+                  value={topupAmount}
+                  autoFocus
+                  onChange={(e) => setTopupAmount(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleTopup()}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setTopupProduct(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleTopup} disabled={!topupAmount || parseFloat(topupAmount) <= 0}>
+                Top Up
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -62,6 +62,28 @@ export async function PUT(request: NextRequest) {
   }
 }
 
+export async function PATCH(request: NextRequest) {
+  try {
+    await connectDB();
+    const body = await request.json();
+    const { _id, topup } = body;
+    if (!_id || typeof topup !== 'number' || topup <= 0) {
+      return Response.json({ error: 'Valid product ID and positive topup amount required' }, { status: 400 });
+    }
+    const product = await Product.findByIdAndUpdate(
+      _id,
+      { $inc: { stock: topup } },
+      { new: true }
+    );
+    if (!product) {
+      return Response.json({ error: 'Product not found' }, { status: 404 });
+    }
+    return Response.json(product);
+  } catch (error) {
+    return Response.json({ error: 'Failed to top up product stock' }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   try {
     await connectDB();

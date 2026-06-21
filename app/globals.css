@@ -446,6 +446,16 @@ ul, ol { list-style: none; }
   background: rgba(239, 68, 68, 0.18);
 }
 
+.btn-success {
+  background: var(--success-soft);
+  color: var(--emerald-400);
+  border-color: rgba(52, 211, 153, 0.2);
+}
+
+.btn-success:hover {
+  background: rgba(52, 211, 153, 0.18);
+}
+
 .btn-sm  { padding: 6px 14px; font-size: 13px; }
 .btn-lg  { padding: 14px 28px; font-size: 15px; border-radius: var(--radius-lg); }
 .btn-icon { width: 36px; height: 36px; padding: 0; border-radius: var(--radius-md); }

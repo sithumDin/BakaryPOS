@@ -1,15 +1,12 @@
 import { NextRequest } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import MachineUsage from '@/lib/models/MachineUsage';
+import prisma from '@/lib/db';
+import { serialize } from '@/lib/serialize';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    await connectDB();
-    const { searchParams } = request.nextUrl;
-    const range = searchParams.get('range') || 'today';
-
+    const range = request.nextUrl.searchParams.get('range') || 'today';
     const now = new Date();
     let from: Date;
 
@@ -23,9 +20,11 @@ export async function GET(request: NextRequest) {
       from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     }
 
-    const usage = await MachineUsage.find({ date: { $gte: from } })
-      .sort({ date: -1 });
-    return Response.json(usage);
+    const usage = await prisma.machineUsage.findMany({
+      where: { date: { gte: from } },
+      orderBy: { date: 'desc' },
+    });
+    return Response.json(serialize(usage));
   } catch {
     return Response.json({ error: 'Failed to fetch usage' }, { status: 500 });
   }
@@ -33,24 +32,23 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await connectDB();
     const body = await request.json();
     const { machineId, machineName, milkPacketsUsed, milkCostPerPacket, dailyRentalFee, notes } = body;
+    const totalCost = milkPacketsUsed * milkCostPerPacket + (dailyRentalFee || 0);
 
-    const totalCost = (milkPacketsUsed * milkCostPerPacket) + (dailyRentalFee || 0);
-
-    const record = await MachineUsage.create({
-      machine: machineId,
-      machineName,
-      milkPacketsUsed,
-      milkCostPerPacket,
-      dailyRentalFee: dailyRentalFee || 0,
-      totalCost,
-      notes: notes || '',
-      date: new Date(),
+    const record = await prisma.machineUsage.create({
+      data: {
+        machineId,
+        machineName,
+        milkPacketsUsed: Number(milkPacketsUsed),
+        milkCostPerPacket: Number(milkCostPerPacket),
+        dailyRentalFee: Number(dailyRentalFee) || 0,
+        totalCost,
+        notes: notes || '',
+        date: new Date(),
+      },
     });
-
-    return Response.json(record, { status: 201 });
+    return Response.json(serialize(record), { status: 201 });
   } catch {
     return Response.json({ error: 'Failed to log usage' }, { status: 500 });
   }
@@ -58,10 +56,9 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    await connectDB();
-    const { searchParams } = request.nextUrl;
-    const id = searchParams.get('id');
-    await MachineUsage.findByIdAndDelete(id);
+    const id = request.nextUrl.searchParams.get('id');
+    if (!id) return Response.json({ error: 'ID required' }, { status: 400 });
+    await prisma.machineUsage.delete({ where: { id } });
     return Response.json({ success: true });
   } catch {
     return Response.json({ error: 'Failed to delete record' }, { status: 500 });

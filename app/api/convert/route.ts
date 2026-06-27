@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import Product from '@/lib/models/Product';
-import Conversion from '@/lib/models/Conversion';
+import prisma from '@/lib/db';
+import { serialize } from '@/lib/serialize';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,21 +9,23 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: 'Missing conversion parameters' }, { status: 400 });
     }
 
-    await connectDB();
-
-    const orig = await Product.findById(originalProductId);
-    const conv = await Product.findById(convertedProductId);
+    const [orig, conv] = await Promise.all([
+      prisma.product.findUnique({ where: { id: originalProductId } }),
+      prisma.product.findUnique({ where: { id: convertedProductId } }),
+    ]);
     if (!orig || !conv) return Response.json({ error: 'Product(s) not found' }, { status: 404 });
     if (orig.stock < originalQty) return Response.json({ error: 'Insufficient original product stock' }, { status: 400 });
 
-    orig.stock -= originalQty;
-    conv.stock += convertedQty;
-    await orig.save();
-    await conv.save();
+    const [updatedOrig, updatedConv] = await prisma.$transaction([
+      prisma.product.update({ where: { id: originalProductId }, data: { stock: { decrement: originalQty } } }),
+      prisma.product.update({ where: { id: convertedProductId }, data: { stock: { increment: convertedQty } } }),
+    ]);
 
-    await Conversion.create({ originalProduct: originalProductId, convertedProduct: convertedProductId, originalQty, convertedQty });
+    await prisma.conversion.create({
+      data: { originalProductId, convertedProductId, originalQty, convertedQty },
+    });
 
-    return Response.json({ success: true, original: orig, converted: conv });
+    return Response.json({ success: true, original: serialize(updatedOrig), converted: serialize(updatedConv) });
   } catch (error) {
     console.error('Convert error:', error);
     return Response.json({ error: 'Internal server error' }, { status: 500 });

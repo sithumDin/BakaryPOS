@@ -1,0 +1,299 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  username  String   @unique
+  password  String
+  role      String   @default("cashier")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  salesAsCashier     Sale[]
+  productions        Production[]
+  inventoryTx        InventoryTransaction[]
+  conversionsHandled Conversion[]
+  remindersCreated   Reminder[]             @relation("CreatedBy")
+  remindersCompleted Reminder[]             @relation("CompletedBy")
+}
+
+model Product {
+  id                String   @id @default(cuid())
+  name              String
+  category          String   @default("Other")
+  costPrice         Float    @default(0)
+  retailPrice       Float    @default(0)
+  wholesalePrice    Float    @default(0)
+  sellingPrice      Float    @default(0)
+  stock             Float    @default(0)
+  unit              String   @default("pcs")
+  lowStockThreshold Float    @default(10)
+  shelfLifeDays     Int      @default(3)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  recipe          ProductIngredient[]
+  saleItems       SaleItem[]
+  productions     Production[]
+  conversionsFrom Conversion[]        @relation("OriginalProduct")
+  conversionsTo   Conversion[]        @relation("ConvertedProduct")
+}
+
+model Ingredient {
+  id                 String   @id @default(cuid())
+  name               String
+  category           String   @default("Raw Material")
+  stock              Float    @default(0)
+  unit               String   @default("kg")
+  lowStockThreshold  Float    @default(5)
+  dailyUsageTarget   Float    @default(0)
+  weeklyUsageTarget  Float    @default(0)
+  monthlyUsageTarget Float    @default(0)
+  supplier           String   @default("")
+  notes              String   @default("")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  recipe       ProductIngredient[]
+  transactions InventoryTransaction[]
+  prodUsages   ProductionIngredient[]
+}
+
+model ProductIngredient {
+  id           String     @id @default(cuid())
+  productId    String
+  ingredientId String
+  qty          Float      @default(0)
+
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String   @default("")
+  address   String   @default("")
+  type      String   @default("retail")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales   Sale[]
+  credits Credit[]
+}
+
+model Sale {
+  id                      String   @id @default(cuid())
+  invoiceNo               String   @unique
+  customerId              String?
+  customerName            String   @default("Walk-in Customer")
+  subtotal                Float
+  discount                Float    @default(0)
+  otherCharges            Float    @default(0)
+  otherChargesDescription String   @default("")
+  total                   Float
+  profit                  Float
+  paymentMethod           String   @default("cash")
+  saleType                String   @default("retail")
+  cashierId               String?
+  cashierName             String   @default("Admin")
+  date                    DateTime @default(now())
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  customer Customer?  @relation(fields: [customerId], references: [id])
+  cashier  User?      @relation(fields: [cashierId], references: [id])
+  items    SaleItem[]
+  credits  Credit[]
+}
+
+model SaleItem {
+  id          String  @id @default(cuid())
+  saleId      String
+  productId   String?
+  productName String
+  qty         Float
+  unitPrice   Float
+  costPrice   Float
+  total       Float
+
+  sale    Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+}
+
+model Credit {
+  id              String   @id @default(cuid())
+  customerId      String?
+  customerName    String
+  customerPhone   String   @default("")
+  saleId          String
+  invoiceNo       String
+  saleType        String   @default("wholesale")
+  totalAmount     Float
+  paidAmount      Float    @default(0)
+  remainingAmount Float
+  status          String   @default("pending")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  customer Customer?       @relation(fields: [customerId], references: [id])
+  sale     Sale             @relation(fields: [saleId], references: [id])
+  payments CreditPayment[]
+}
+
+model CreditPayment {
+  id       String   @id @default(cuid())
+  creditId String
+  amount   Float
+  date     DateTime @default(now())
+  note     String   @default("")
+
+  credit Credit @relation(fields: [creditId], references: [id], onDelete: Cascade)
+}
+
+model Production {
+  id             String    @id @default(cuid())
+  productId      String
+  qty            Float
+  productionDate DateTime  @default(now())
+  expiryDate     DateTime?
+  producedById   String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  product         Product                @relation(fields: [productId], references: [id])
+  producedBy      User?                  @relation(fields: [producedById], references: [id])
+  ingredientsUsed ProductionIngredient[]
+}
+
+model ProductionIngredient {
+  id           String     @id @default(cuid())
+  productionId String
+  ingredientId String
+  qty          Float      @default(0)
+
+  production Production @relation(fields: [productionId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+}
+
+model InventoryTransaction {
+  id              String   @id @default(cuid())
+  ingredientId    String
+  type            String
+  qty             Float
+  unit            String
+  note            String   @default("")
+  reference       String   @default("")
+  transactionDate DateTime @default(now())
+  createdById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  createdBy  User?      @relation(fields: [createdById], references: [id])
+}
+
+model Machine {
+  id                String   @id @default(cuid())
+  name              String
+  type              String   @default("")
+  milkCostPerPacket Float    @default(0)
+  dailyRentalFee    Float    @default(0)
+  notes             String   @default("")
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  usages MachineUsage[]
+}
+
+model MachineUsage {
+  id                String   @id @default(cuid())
+  machineId         String
+  machineName       String
+  date              DateTime @default(now())
+  milkPacketsUsed   Float
+  milkCostPerPacket Float
+  dailyRentalFee    Float    @default(0)
+  totalCost         Float
+  notes             String   @default("")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  machine Machine @relation(fields: [machineId], references: [id])
+}
+
+model Quotation {
+  id              String   @id @default(cuid())
+  quotationNo     String   @default("")
+  customerName    String   @default("")
+  customerPhone   String   @default("")
+  customerEmail   String   @default("")
+  customerAddress String   @default("")
+  subtotal        Float    @default(0)
+  discount        Float    @default(0)
+  other           Float    @default(0)
+  advance         Float    @default(0)
+  total           Float    @default(0)
+  notes           String   @default("")
+  validUntil      String   @default("")
+  quotationType   String   @default("retail")
+  status          String   @default("draft")
+  createdBy       String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  items QuotationItem[]
+}
+
+model QuotationItem {
+  id          String    @id @default(cuid())
+  quotationId String
+  product     String    @default("")
+  productName String    @default("")
+  qty         Float     @default(0)
+  unitPrice   Float     @default(0)
+  unit        String    @default("")
+  total       Float     @default(0)
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+}
+
+model Reminder {
+  id              String    @id @default(cuid())
+  text            String
+  done            Boolean   @default(false)
+  createdById     String?
+  createdByName   String    @default("Admin")
+  completedById   String?
+  completedByName String?
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  createdBy   User? @relation("CreatedBy", fields: [createdById], references: [id])
+  completedBy User? @relation("CompletedBy", fields: [completedById], references: [id])
+}
+
+model Conversion {
+  id                 String   @id @default(cuid())
+  originalProductId  String
+  convertedProductId String
+  originalQty        Float
+  convertedQty       Float
+  date               DateTime @default(now())
+  handledById        String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  originalProduct  Product @relation("OriginalProduct", fields: [originalProductId], references: [id])
+  convertedProduct Product @relation("ConvertedProduct", fields: [convertedProductId], references: [id])
+  handledBy        User?   @relation(fields: [handledById], references: [id])
+}

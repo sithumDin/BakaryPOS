@@ -1,8 +1,6 @@
 import { NextRequest } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import Quotation from '@/lib/models/Quotation';
-import Customer from '@/lib/models/Customer';
-import Credit from '@/lib/models/Credit';
+import prisma from '@/lib/db';
+import { serialize } from '@/lib/serialize';
 import { jwtVerify } from 'jose';
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback_secret_key_change_this_later');
@@ -12,14 +10,9 @@ export const dynamic = 'force-dynamic';
 async function getSessionUser(request: NextRequest) {
   const token = request.cookies.get('session')?.value;
   if (!token) return null;
-
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
-    return {
-      id: payload.id as string,
-      name: payload.name as string,
-      role: (payload.role as string) || 'cashier',
-    };
+    return { id: payload.id as string, name: payload.name as string, role: (payload.role as string) || 'cashier' };
   } catch {
     return null;
   }
@@ -27,17 +20,18 @@ async function getSessionUser(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    await connectDB();
     const { searchParams } = request.nextUrl;
     const limit = parseInt(searchParams.get('limit') || '50');
     const status = searchParams.get('status');
 
-    const query: Record<string, unknown> = {};
-    if (status) query.status = status;
-
-    const quotations = await Quotation.find(query).sort({ createdAt: -1 }).limit(limit);
-    return Response.json(quotations);
-  } catch (error) {
+    const quotations = await prisma.quotation.findMany({
+      where: status ? { status } : undefined,
+      include: { items: true },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+    return Response.json(serialize(quotations));
+  } catch {
     return Response.json({ error: 'Failed to fetch quotations' }, { status: 500 });
   }
 }
@@ -45,129 +39,154 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await getSessionUser(request);
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    await connectDB();
     const body = await request.json();
-
-    // Generate quotation number
-    const count = await Quotation.countDocuments();
+    const count = await prisma.quotation.count();
     const prefix = body.quotationType === 'wholesale' ? 'QWS' : 'QRT';
     const quotationNo = `${prefix}-${String(count + 1).padStart(5, '0')}`;
 
-    const quotation = await Quotation.create({
-      ...body,
-      quotationNo,
-      createdBy: user.name,
+    const quotation = await prisma.quotation.create({
+      data: {
+        quotationNo,
+        customerName: body.customerName || '',
+        customerPhone: body.customerPhone || '',
+        customerEmail: body.customerEmail || '',
+        customerAddress: body.customerAddress || '',
+        subtotal: Number(body.subtotal) || 0,
+        discount: Number(body.discount) || 0,
+        other: Number(body.other) || 0,
+        advance: Number(body.advance) || 0,
+        total: Number(body.total) || 0,
+        notes: body.notes || '',
+        validUntil: body.validUntil || '',
+        quotationType: body.quotationType || 'retail',
+        status: body.status || 'draft',
+        createdBy: user.name,
+        items: body.items?.length
+          ? {
+              create: body.items.map((item: any) => ({
+                product: item.product || '',
+                productName: item.productName || '',
+                qty: Number(item.qty) || 0,
+                unitPrice: Number(item.unitPrice) || 0,
+                unit: item.unit || '',
+                total: Number(item.total) || 0,
+              })),
+            }
+          : undefined,
+      },
+      include: { items: true },
     });
 
-    return Response.json(quotation, { status: 201 });
+    return Response.json(serialize(quotation), { status: 201 });
   } catch (error) {
-    console.error('POST error:', error);
-    return Response.json({ error: 'Failed to create quotation', details: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
+    console.error('POST quotation error:', error);
+    return Response.json({ error: 'Failed to create quotation' }, { status: 500 });
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
     const user = await getSessionUser(request);
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    await connectDB();
     const body = await request.json();
-    const { _id, ...data } = body;
+    const { _id, items, ...data } = body;
+    if (!_id) return Response.json({ error: 'Quotation ID is required' }, { status: 400 });
 
-    if (!_id) {
-      return Response.json({ error: 'Quotation ID is required' }, { status: 400 });
-    }
+    const current = await prisma.quotation.findUnique({ where: { id: _id } });
+    if (!current) return Response.json({ error: 'Quotation not found' }, { status: 404 });
 
-    console.log('Updating quotation:', { _id, dataKeys: Object.keys(data) });
+    const quotation = await prisma.quotation.update({
+      where: { id: _id },
+      data: {
+        customerName: data.customerName ?? current.customerName,
+        customerPhone: data.customerPhone ?? current.customerPhone,
+        customerEmail: data.customerEmail ?? current.customerEmail,
+        customerAddress: data.customerAddress ?? current.customerAddress,
+        subtotal: data.subtotal !== undefined ? Number(data.subtotal) : current.subtotal,
+        discount: data.discount !== undefined ? Number(data.discount) : current.discount,
+        other: data.other !== undefined ? Number(data.other) : current.other,
+        advance: data.advance !== undefined ? Number(data.advance) : current.advance,
+        total: data.total !== undefined ? Number(data.total) : current.total,
+        notes: data.notes ?? current.notes,
+        validUntil: data.validUntil ?? current.validUntil,
+        quotationType: data.quotationType ?? current.quotationType,
+        status: data.status ?? current.status,
+        ...(items
+          ? {
+              items: {
+                deleteMany: {},
+                create: items.map((item: any) => ({
+                  product: item.product || '',
+                  productName: item.productName || '',
+                  qty: Number(item.qty) || 0,
+                  unitPrice: Number(item.unitPrice) || 0,
+                  unit: item.unit || '',
+                  total: Number(item.total) || 0,
+                })),
+              },
+            }
+          : {}),
+      },
+      include: { items: true },
+    });
 
-    // Get the current quotation to check status change
-    const currentQuotation = await Quotation.findById(_id);
-    if (!currentQuotation) {
-      return Response.json({ error: 'Quotation not found', details: `ID: ${_id}` }, { status: 404 });
-    }
-
-    const quotation = await Quotation.findByIdAndUpdate(_id, data, { new: true, runValidators: false });
-    
-    if (!quotation) {
-      return Response.json({ error: 'Quotation not found', details: `ID: ${_id}` }, { status: 404 });
-    }
-
-    // Check if status changed to 'accepted' and create credit record
-    if (data.status === 'accepted' && currentQuotation.status !== 'accepted') {
+    // Auto-create credit record when status changes to 'accepted'
+    if (data.status === 'accepted' && current.status !== 'accepted') {
       try {
-        // Find or create customer
-        let customer = await Customer.findOne({ name: quotation.customerName });
+        let customer = await prisma.customer.findFirst({ where: { name: quotation.customerName } });
         if (!customer) {
-          customer = await Customer.create({
-            name: quotation.customerName,
-            phone: quotation.customerPhone || '',
-            address: quotation.customerAddress || '',
-            type: quotation.quotationType,
+          customer = await prisma.customer.create({
+            data: {
+              name: quotation.customerName,
+              phone: quotation.customerPhone || '',
+              address: quotation.customerAddress || '',
+              type: quotation.quotationType,
+            },
           });
         }
-
-        // Calculate amounts
-        const originalAmount = quotation.subtotal - (quotation.discount || 0) + (quotation.other || 0);
-        const paidAmount = quotation.advance || 0;
-        const remainingAmount = originalAmount - paidAmount;
-
-        // Create credit record
-        await Credit.create({
-          customer: customer._id,
-          customerName: quotation.customerName,
-          sale: quotation._id, // Using quotation ID as sale reference
-          invoiceNo: quotation.quotationNo,
-          totalAmount: originalAmount,
-          paidAmount: paidAmount,
-          remainingAmount: remainingAmount,
-          status: remainingAmount <= 0 ? 'paid' : 'pending',
+        const originalAmount = quotation.subtotal - quotation.discount + quotation.other;
+        const paidAmount = quotation.advance;
+        const remaining = Math.max(0, originalAmount - paidAmount);
+        await prisma.credit.create({
+          data: {
+            customerId: customer.id,
+            customerName: quotation.customerName,
+            customerPhone: quotation.customerPhone || '',
+            saleId: _id,
+            invoiceNo: quotation.quotationNo,
+            saleType: quotation.quotationType,
+            totalAmount: originalAmount,
+            paidAmount,
+            remainingAmount: remaining,
+            status: remaining <= 0 ? 'paid' : 'pending',
+          },
         });
-
-        console.log('Credit record created for accepted quotation');
-      } catch (creditError) {
-        console.error('Failed to create credit record:', creditError);
-        // Don't fail the quotation update if credit creation fails
+      } catch (creditErr) {
+        console.error('Credit creation failed:', creditErr);
       }
     }
 
-    console.log('Quotation updated successfully');
-    return Response.json(quotation);
+    return Response.json(serialize(quotation));
   } catch (error) {
-    console.error('PUT error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return Response.json({ 
-      error: 'Failed to update quotation', 
-      details: errorMessage,
-      type: error instanceof Error ? error.constructor.name : 'Unknown'
-    }, { status: 500 });
+    console.error('PUT quotation error:', error);
+    return Response.json({ error: 'Failed to update quotation' }, { status: 500 });
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
     const user = await getSessionUser(request);
-    if (!user || user.role !== 'admin') {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!user || user.role !== 'admin') return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    await connectDB();
-    const { searchParams } = request.nextUrl;
-    const id = searchParams.get('id');
+    const id = request.nextUrl.searchParams.get('id');
+    if (!id) return Response.json({ error: 'Quotation ID required' }, { status: 400 });
 
-    if (!id) {
-      return Response.json({ error: 'Quotation ID required' }, { status: 400 });
-    }
-
-    await Quotation.findByIdAndDelete(id);
+    await prisma.quotation.delete({ where: { id } });
     return Response.json({ message: 'Quotation deleted' });
-  } catch (error) {
+  } catch {
     return Response.json({ error: 'Failed to delete quotation' }, { status: 500 });
   }
 }

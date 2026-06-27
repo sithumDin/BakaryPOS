@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
-import connectDB from '@/lib/mongodb';
-import User from '@/lib/models/User';
+import prisma from '@/lib/db';
+import { serialize } from '@/lib/serialize';
 import bcrypt from 'bcryptjs';
 
 export const dynamic = 'force-dynamic';
@@ -25,9 +25,11 @@ export async function GET(request: NextRequest) {
   if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    await connectDB();
-    const users = await User.find({}).select('-password').sort({ createdAt: -1 });
-    return Response.json(users);
+    const users = await prisma.user.findMany({
+      select: { id: true, name: true, username: true, role: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    return Response.json(serialize(users));
   } catch {
     return Response.json({ error: 'Failed to fetch users' }, { status: 500 });
   }
@@ -38,22 +40,21 @@ export async function POST(request: NextRequest) {
   if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    await connectDB();
     const { name, username, password, role } = await request.json();
-
     if (!name || !username || !password) {
       return Response.json({ error: 'Name, username and password are required' }, { status: 400 });
     }
 
-    const existing = await User.findOne({ username });
-    if (existing) {
-      return Response.json({ error: 'Username already exists' }, { status: 409 });
-    }
+    const existing = await prisma.user.findUnique({ where: { username } });
+    if (existing) return Response.json({ error: 'Username already exists' }, { status: 409 });
 
     const hashed = await bcrypt.hash(password, 10);
-    const user = await User.create({ name, username, password: hashed, role: role || 'cashier' });
+    const user = await prisma.user.create({
+      data: { name, username, password: hashed, role: role || 'cashier' },
+      select: { id: true, name: true, username: true, role: true, createdAt: true },
+    });
 
-    return Response.json({ _id: user._id, name: user.name, username: user.username, role: user.role }, { status: 201 });
+    return Response.json(serialize(user), { status: 201 });
   } catch {
     return Response.json({ error: 'Failed to create user' }, { status: 500 });
   }

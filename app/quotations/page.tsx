@@ -1028,6 +1028,7 @@ export default function QuotationsPage() {
                         subtotal: 0,
                         discount: 0,
                         other: 0,
+                        advance: 0,
                         total: 0,
                         notes: '',
                         validUntil: '',

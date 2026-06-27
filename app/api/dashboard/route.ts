@@ -1,16 +1,38 @@
-import connectDB from '@/lib/mongodb';
-import Sale from '@/lib/models/Sale';
-import Product from '@/lib/models/Product';
-import Customer from '@/lib/models/Customer';
-import Credit from '@/lib/models/Credit';
-import Production from '@/lib/models/Production';
+import prisma from '@/lib/db';
+import { serialize } from '@/lib/serialize';
 
 export const dynamic = 'force-dynamic';
 
+function fallback() {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dailyProfits = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    dailyProfits.push({ date: d.toISOString().split('T')[0], profit: 0, revenue: 0 });
+  }
+  return {
+    today: { revenue: 0, profit: 0, count: 0 },
+    week: { revenue: 0, profit: 0 },
+    month: { revenue: 0, profit: 0 },
+    year: { revenue: 0, profit: 0 },
+    totalCustomers: 0,
+    totalProducts: 0,
+    lowStockProducts: 0,
+    lowStockList: [],
+    totalOutstanding: 0,
+    creditBreakdown: { retail: { amount: 0, count: 0 }, wholesale: { amount: 0, count: 0 } },
+    productionSummary: { totalProduced: 0, totalSold: 0, totalUnsold: 0, byItem: {} },
+    recentSales: [],
+    dailyProfits,
+    categoryBreakdown: {},
+    cashierBreakdown: {},
+  };
+}
+
 export async function GET() {
   try {
-    await connectDB();
-
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const weekStart = new Date(todayStart);
@@ -18,174 +40,128 @@ export async function GET() {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const yearStart = new Date(now.getFullYear(), 0, 1);
 
-    // Today's stats
-    const todaySales = await Sale.find({ date: { $gte: todayStart } });
-    const todayRevenue = todaySales.reduce((sum: number, s: { total: number }) => sum + s.total, 0);
-    const todayProfit = todaySales.reduce((sum: number, s: { profit: number }) => sum + s.profit, 0);
+    const [todaySales, weekSales, monthSales, yearSales, totalCustomers, totalProducts, allProducts, pendingCredits, todayProductions, recentSales] =
+      await Promise.all([
+        prisma.sale.findMany({ where: { date: { gte: todayStart } }, include: { items: true } }),
+        prisma.sale.findMany({ where: { date: { gte: weekStart } }, select: { total: true, profit: true } }),
+        prisma.sale.findMany({ where: { date: { gte: monthStart } }, include: { items: true } }),
+        prisma.sale.findMany({ where: { date: { gte: yearStart } }, select: { total: true, profit: true } }),
+        prisma.customer.count(),
+        prisma.product.count(),
+        prisma.product.findMany({ select: { id: true, stock: true, lowStockThreshold: true, name: true, category: true, unit: true } }),
+        prisma.credit.findMany({ where: { status: { not: 'paid' } }, select: { remainingAmount: true, saleType: true } }),
+        prisma.production.findMany({
+          where: { productionDate: { gte: todayStart } },
+          include: { product: { select: { id: true, name: true, unit: true } } },
+        }),
+        prisma.sale.findMany({ orderBy: { date: 'desc' }, take: 10, include: { items: true } }),
+      ]);
+
+    // Today
+    const todayRevenue = todaySales.reduce((s, x) => s + x.total, 0);
+    const todayProfit = todaySales.reduce((s, x) => s + x.profit, 0);
     const todayCount = todaySales.length;
 
-    // Daily sales by cashier
     const cashierBreakdown: Record<string, { revenue: number; count: number }> = {};
     for (const sale of todaySales) {
-      const name = sale.cashierName || 'Admin';
+      const name = (sale as any).cashierName || 'Admin';
       if (!cashierBreakdown[name]) cashierBreakdown[name] = { revenue: 0, count: 0 };
       cashierBreakdown[name].revenue += sale.total;
       cashierBreakdown[name].count += 1;
     }
 
-    // Week stats
-    const weekSales = await Sale.find({ date: { $gte: weekStart } });
-    const weekRevenue = weekSales.reduce((sum: number, s: { total: number }) => sum + s.total, 0);
-    const weekProfit = weekSales.reduce((sum: number, s: { profit: number }) => sum + s.profit, 0);
+    // Periods
+    const weekRevenue = weekSales.reduce((s, x) => s + x.total, 0);
+    const weekPr = weekSales.reduce((s, x) => s + x.profit, 0);
+    const monthRevenue = monthSales.reduce((s, x) => s + x.total, 0);
+    const monthPr = monthSales.reduce((s, x) => s + x.profit, 0);
+    const yearRevenue = yearSales.reduce((s, x) => s + x.total, 0);
+    const yearPr = yearSales.reduce((s, x) => s + x.profit, 0);
 
-    // Month stats
-    const monthSales = await Sale.find({ date: { $gte: monthStart } });
-    const monthRevenue = monthSales.reduce((sum: number, s: { total: number }) => sum + s.total, 0);
-    const monthProfit = monthSales.reduce((sum: number, s: { profit: number }) => sum + s.profit, 0);
+    // Low stock
+    const lowStockList = allProducts.filter((p) => p.stock <= p.lowStockThreshold);
 
-    // Year stats
-    const yearSales = await Sale.find({ date: { $gte: yearStart } });
-    const yearRevenue = yearSales.reduce((sum: number, s: { total: number }) => sum + s.total, 0);
-    const yearProfit = yearSales.reduce((sum: number, s: { profit: number }) => sum + s.profit, 0);
-
-    // Total counts
-    const totalCustomers = await Customer.countDocuments();
-    const totalProducts = await Product.countDocuments();
-    const lowStockProducts = await Product.find({
-      $expr: { $lte: ['$stock', '$lowStockThreshold'] },
-    });
-
-    // Outstanding credit
-    const pendingCredits = await Credit.find({ status: { $ne: 'paid' } });
-    const totalOutstanding = pendingCredits.reduce(
-      (sum: number, c: { remainingAmount: number }) => sum + c.remainingAmount,
-      0
-    );
-    const retailOutstanding = pendingCredits
-      .filter((c: { saleType?: string }) => c.saleType === 'retail')
-      .reduce((sum: number, c: { remainingAmount: number }) => sum + c.remainingAmount, 0);
-    const wholesaleOutstanding = pendingCredits
-      .filter((c: { saleType?: string }) => c.saleType !== 'retail')
-      .reduce((sum: number, c: { remainingAmount: number }) => sum + c.remainingAmount, 0);
+    // Credits
+    const totalOutstanding = pendingCredits.reduce((s, c) => s + c.remainingAmount, 0);
+    const retailPending = pendingCredits.filter((c) => c.saleType === 'retail');
+    const wholePending = pendingCredits.filter((c) => c.saleType !== 'retail');
     const creditBreakdown = {
-      retail: { amount: retailOutstanding, count: pendingCredits.filter((c: { saleType?: string }) => c.saleType === 'retail').length },
-      wholesale: { amount: wholesaleOutstanding, count: pendingCredits.filter((c: { saleType?: string }) => c.saleType !== 'retail').length },
+      retail: { amount: retailPending.reduce((s, c) => s + c.remainingAmount, 0), count: retailPending.length },
+      wholesale: { amount: wholePending.reduce((s, c) => s + c.remainingAmount, 0), count: wholePending.length },
     };
 
-    // Today's production vs sales summary
-    const todayProductions = await Production.find({
-      productionDate: { $gte: todayStart },
-    }).populate('product', 'name unit');
-
+    // Production vs sales
     const productionByItem: Record<string, { name: string; unit: string; produced: number; sold: number }> = {};
     for (const p of todayProductions) {
-      const id = String(p.product._id);
+      const id = p.productId;
       if (!productionByItem[id]) {
         productionByItem[id] = { name: p.product.name, unit: p.product.unit, produced: 0, sold: 0 };
       }
       productionByItem[id].produced += p.qty;
     }
-    // Count units sold today per product
     for (const sale of todaySales) {
       for (const item of sale.items) {
-        const id = String(item.product);
-        if (productionByItem[id]) {
+        const id = item.productId;
+        if (id && productionByItem[id]) {
           productionByItem[id].sold += item.qty;
         }
       }
     }
     const totalProducedToday = Object.values(productionByItem).reduce((s, v) => s + v.produced, 0);
-    const totalSoldUnitsToday = Object.values(productionByItem).reduce((s, v) => s + v.sold, 0);
-    const totalUnsoldToday = Math.max(0, totalProducedToday - totalSoldUnitsToday);
+    const totalSoldToday = Object.values(productionByItem).reduce((s, v) => s + v.sold, 0);
 
-    // Recent sales
-    const recentSales = await Sale.find({}).sort({ date: -1 }).limit(10);
-
-    // Daily profit for last 7 days
+    // 7-day daily chart
     const dailyProfits = [];
     for (let i = 6; i >= 0; i--) {
       const dayStart = new Date(todayStart);
       dayStart.setDate(dayStart.getDate() - i);
       const dayEnd = new Date(dayStart);
       dayEnd.setDate(dayEnd.getDate() + 1);
-      const daySales = await Sale.find({ date: { $gte: dayStart, $lt: dayEnd } });
-      const profit = daySales.reduce((sum: number, s: { profit: number }) => sum + s.profit, 0);
-      const revenue = daySales.reduce((sum: number, s: { total: number }) => sum + s.total, 0);
+      const daySales = await prisma.sale.findMany({
+        where: { date: { gte: dayStart, lt: dayEnd } },
+        select: { total: true, profit: true },
+      });
       dailyProfits.push({
         date: dayStart.toISOString().split('T')[0],
-        profit,
-        revenue,
+        profit: daySales.reduce((s, x) => s + x.profit, 0),
+        revenue: daySales.reduce((s, x) => s + x.total, 0),
       });
     }
 
-    // Sales by category
-    const allSales = await Sale.find({ date: { $gte: monthStart } });
+    // Category breakdown (this month)
+    const productMap = Object.fromEntries(allProducts.map((p) => [p.id, p.category]));
     const categoryMap: Record<string, number> = {};
-    for (const sale of allSales) {
+    for (const sale of monthSales) {
       for (const item of sale.items) {
-        const product = await Product.findById(item.product);
-        const cat = product?.category || 'Other';
+        const cat = (item.productId ? productMap[item.productId] : null) || 'Other';
         categoryMap[cat] = (categoryMap[cat] || 0) + item.total;
       }
     }
 
     return Response.json({
       today: { revenue: todayRevenue, profit: todayProfit, count: todayCount },
-      week: { revenue: weekRevenue, profit: weekProfit },
-      month: { revenue: monthRevenue, profit: monthProfit },
-      year: { revenue: yearRevenue, profit: yearProfit },
+      week: { revenue: weekRevenue, profit: weekPr },
+      month: { revenue: monthRevenue, profit: monthPr },
+      year: { revenue: yearRevenue, profit: yearPr },
       totalCustomers,
       totalProducts,
-      lowStockProducts: lowStockProducts.length,
-      lowStockList: lowStockProducts,
+      lowStockProducts: lowStockList.length,
+      lowStockList: serialize(lowStockList),
       totalOutstanding,
       creditBreakdown,
       productionSummary: {
         totalProduced: totalProducedToday,
-        totalSold: totalSoldUnitsToday,
-        totalUnsold: totalUnsoldToday,
+        totalSold: totalSoldToday,
+        totalUnsold: Math.max(0, totalProducedToday - totalSoldToday),
         byItem: productionByItem,
       },
-      recentSales,
+      recentSales: serialize(recentSales),
       dailyProfits,
       categoryBreakdown: categoryMap,
       cashierBreakdown,
     });
   } catch (error) {
-    console.error('Server Error:', error);
-
-    // Return a safe fallback payload so the dashboard can still render
-    // even when the database is temporarily unavailable.
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const dailyProfits = [];
-    for (let i = 6; i >= 0; i--) {
-      const day = new Date(todayStart);
-      day.setDate(day.getDate() - i);
-      dailyProfits.push({
-        date: day.toISOString().split('T')[0],
-        profit: 0,
-        revenue: 0,
-      });
-    }
-
-    return Response.json({
-      today: { revenue: 0, profit: 0, count: 0 },
-      week: { revenue: 0, profit: 0 },
-      month: { revenue: 0, profit: 0 },
-      year: { revenue: 0, profit: 0 },
-      totalCustomers: 0,
-      totalProducts: 0,
-      lowStockProducts: 0,
-      lowStockList: [],
-      totalOutstanding: 0,
-      creditBreakdown: { retail: { amount: 0, count: 0 }, wholesale: { amount: 0, count: 0 } },
-      productionSummary: { totalProduced: 0, totalSold: 0, totalUnsold: 0, byItem: {} },
-      recentSales: [],
-      dailyProfits,
-      categoryBreakdown: {},
-      cashierBreakdown: {},
-      warning: 'Database temporarily unavailable',
-    });
+    console.error('Dashboard error:', error);
+    return Response.json(fallback());
   }
 }

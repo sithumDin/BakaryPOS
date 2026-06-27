@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
-import connectDB from '@/lib/mongodb';
-import User from '@/lib/models/User';
+import prisma from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,20 +18,17 @@ async function getAdminFromRequest(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminFromRequest(request);
   if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    await connectDB();
-
-    if (String(admin.id) === params.id) {
+    const { id } = await params;
+    if (String(admin.id) === id) {
       return Response.json({ error: 'Cannot delete your own account' }, { status: 400 });
     }
-
-    const user = await User.findByIdAndDelete(params.id);
+    const user = await prisma.user.delete({ where: { id } }).catch(() => null);
     if (!user) return Response.json({ error: 'User not found' }, { status: 404 });
-
     return Response.json({ success: true });
   } catch {
     return Response.json({ error: 'Failed to delete user' }, { status: 500 });

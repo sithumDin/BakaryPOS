@@ -87,108 +87,131 @@ export default function CustomersPage() {
 
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
-        <h1>👥 Customers</h1>
-        <p>Manage your customer database</p>
+      {/* Header Row */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 900, color: '#1A1D23', margin: 0 }}>Customers</h1>
+          <p style={{ fontSize: 13, color: '#9CA3AF', margin: '4px 0 0' }}>Manage retail and wholesale customer records</p>
+        </div>
+        <button className="btn btn-primary" onClick={openAdd}>+ Add Customer</button>
       </div>
 
-      {/* Stats */}
-      <div className="stat-cards-grid" style={{ marginBottom: '24px' }}>
-        <div className="stat-card">
-          <div className="stat-card-header">
-            <span className="stat-card-label">Total Customers</span>
-            <div className="stat-card-icon green">👥</div>
+      {/* Stat Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+        {/* Total Customers */}
+        <div style={{ background: '#fff', borderRadius: 20, padding: '16px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Customers</span>
+            <span style={{ fontSize: 20, background: '#EFF6FF', borderRadius: 10, padding: '4px 8px' }}>👥</span>
           </div>
-          <div className="stat-card-value">{customers.length}</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: '#1A1D23' }}>{customers.length}</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-card-header">
-            <span className="stat-card-label">Retail</span>
-            <div className="stat-card-icon blue">🛒</div>
-          </div>
-          <div className="stat-card-value">{retailCount}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-header">
-            <span className="stat-card-label">Wholesale</span>
-            <div className="stat-card-icon yellow">🏭</div>
-          </div>
-          <div className="stat-card-value">{wholesaleCount}</div>
-        </div>
-      </div>
 
-      <div className="toolbar">
-        <div className="toolbar-left">
-          <div className="search-bar">
-            <span className="search-icon">🔍</span>
-            <input
-              type="text"
-              placeholder="Search by name or phone..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+        {/* Retail */}
+        <div style={{ background: '#fff', borderRadius: 20, padding: '16px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Retail</span>
+            <span style={{ fontSize: 20, background: '#F0FDF4', borderRadius: 10, padding: '4px 8px' }}>🛒</span>
           </div>
-          <select
-            className="form-select"
-            style={{ width: '150px' }}
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-          >
-            <option value="">All Types</option>
-            <option value="retail">Retail</option>
-            <option value="wholesale">Wholesale</option>
-          </select>
+          <div style={{ fontSize: 28, fontWeight: 800, color: '#1A1D23' }}>{retailCount}</div>
         </div>
-        <div className="toolbar-right">
-          <button className="btn btn-primary" onClick={openAdd}>+ Add Customer</button>
+
+        {/* Wholesale */}
+        <div style={{ background: '#fff', borderRadius: 20, padding: '16px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Wholesale</span>
+            <span style={{ fontSize: 20, background: '#F5F3FF', borderRadius: 10, padding: '4px 8px' }}>🏭</span>
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: '#1A1D23' }}>{wholesaleCount}</div>
         </div>
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="empty-state">
-          <span className="icon">👥</span>
-          <h3>No Customers Found</h3>
-          <p>Add your first customer to get started.</p>
+      {/* Search + Filter Row */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: '#fff', border: '1px solid #ECEEF5', borderRadius: 99, padding: '0 14px', gap: 8 }}>
+          <span style={{ fontSize: 14, color: '#9CA3AF' }}>🔍</span>
+          <input
+            type="text"
+            placeholder="Search by name or phone..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: '#1A1D23', padding: '10px 0' }}
+          />
         </div>
-      ) : (
-        <div className="table-container">
-          <table className="table">
-            <thead>
+        <select
+          className="form-select"
+          style={{ width: 150, borderRadius: 12 }}
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+        >
+          <option value="">All Types</option>
+          <option value="retail">Retail</option>
+          <option value="wholesale">Wholesale</option>
+        </select>
+      </div>
+
+      {/* Customers Table */}
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <table className="table">
+          <thead>
+            <tr>
+              <th style={{ width: 48 }}>#</th>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Address</th>
+              <th>Type</th>
+              <th style={{ textAlign: 'right' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
               <tr>
-                <th>Name</th>
-                <th>Phone</th>
-                <th>Address</th>
-                <th>Type</th>
-                <th>Added</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '48px 0', color: '#9CA3AF', fontSize: 14 }}>
+                  No customers found
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {filtered.map((c) => (
+            ) : (
+              filtered.map((c, idx) => (
                 <tr key={c._id}>
-                  <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</td>
-                  <td style={{ fontFamily: 'monospace' }}>{c.phone || '—'}</td>
-                  <td style={{ maxWidth: '200px' }} className="truncate">{c.address || '—'}</td>
+                  <td style={{ color: '#9CA3AF', fontSize: 13 }}>{idx + 1}</td>
+                  <td style={{ fontWeight: 600, color: '#1A1D23' }}>{c.name}</td>
+                  <td style={{ fontFamily: 'monospace', color: '#4B5563' }}>{c.phone || '—'}</td>
+                  <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#4B5563' }}>{c.address || '—'}</td>
                   <td>
-                    <span className={`badge ${c.type === 'wholesale' ? 'badge-warning' : 'badge-info'}`}>
-                      {c.type}
-                    </span>
-                  </td>
-                  <td style={{ color: 'var(--text-muted)' }}>
-                    {c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-LK') : '—'}
+                    {c.type === 'retail' ? (
+                      <span style={{ padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: '#EFF6FF', color: '#2563EB' }}>
+                        Retail
+                      </span>
+                    ) : (
+                      <span style={{ padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: '#F5F3FF', color: '#7C3AED' }}>
+                        Wholesale
+                      </span>
+                    )}
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                      <button className="btn btn-secondary btn-sm" onClick={() => openEdit(c)}>✏️</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => handleDelete(c._id!)}>🗑️</button>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={() => openEdit(c)}
+                        style={{ background: '#F8FAFC', border: '1px solid #ECEEF5', borderRadius: 9, padding: '5px 10px', cursor: 'pointer', fontSize: 13, color: '#4B5563' }}
+                        title="Edit"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => handleDelete(c._id!)}
+                        style={{ background: '#FFF5F5', border: '1px solid #FEE2E2', borderRadius: 9, padding: '5px 10px', cursor: 'pointer', fontSize: 13, color: '#DC2626' }}
+                        title="Delete"
+                      >
+                        🗑️
+                      </button>
                     </div>
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {/* Modal */}
       {showModal && (
@@ -200,7 +223,7 @@ export default function CustomersPage() {
             </div>
             <div className="modal-body">
               <div className="form-group">
-                <label className="form-label">Customer Name</label>
+                <label className="form-label">Customer Name *</label>
                 <input
                   className="form-input"
                   type="text"

@@ -15,6 +15,17 @@ function getWholesalePrice(product: Product) {
   return product.wholesalePrice ?? product.sellingPrice ?? 0;
 }
 
+const CATEGORY_COLORS: Record<string, string> = {
+  'Bread': '#F59E0B',
+  'Cakes': '#EC4899',
+  'Pastries': '#8B5CF6',
+  'Cookies & Biscuits': '#F97316',
+  'Rolls & Buns': '#EAB308',
+  'Savories': '#22C55E',
+  'Beverages': '#3B82F6',
+  'Other': '#94A3B8',
+};
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,45 +146,101 @@ export default function ProductsPage() {
     return matchSearch && matchCategory;
   });
 
+  // Stat card computed values
+  const lowStockCount = products.filter((p) => p.stock <= p.lowStockThreshold).length;
+  const totalValue = products.reduce((sum, p) => sum + p.stock * p.costPrice, 0);
+  const uniqueCategories = new Set(products.map((p) => p.category)).size;
+
   if (loading) {
     return <div className="loading-spinner"><div className="spinner" /></div>;
   }
 
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
-        <h1>Products</h1>
-        <p>Manage your product catalog</p>
+      {/* Header row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 900, color: '#1A1D23', margin: 0 }}>Products</h1>
+          <p style={{ fontSize: 13, color: '#9CA3AF', marginTop: 3 }}>Manage your bakery product catalog</p>
+        </div>
+        <button className="btn btn-primary" onClick={openAdd}>+ Add Product</button>
       </div>
 
-      <div className="toolbar">
-        <div className="toolbar-left">
-          <div className="search-bar">
-            <span className="search-icon">🔍</span>
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+      {/* Search + filter bar */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center' }}>
+        <div style={{ position: 'relative', flex: 1 }}>
+          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 15, pointerEvents: 'none' }}>🔍</span>
+          <input
+            type="text"
+            placeholder="Search products..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '10px 14px 10px 38px',
+              borderRadius: 99,
+              background: '#fff',
+              border: '1.5px solid #ECEEF5',
+              fontSize: 14,
+              color: '#1A1D23',
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+        <select
+          className="form-select"
+          style={{ width: 160, borderRadius: 12 }}
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+        >
+          <option value="">All Categories</option>
+          {CATEGORIES.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Stat cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
+        {/* Total Products */}
+        <div style={{ background: '#fff', borderRadius: 20, padding: '16px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📦</div>
+            <span style={{ fontSize: 12, textTransform: 'uppercase', color: '#9CA3AF', fontWeight: 600, letterSpacing: '0.05em' }}>Total Products</span>
           </div>
-          <select
-            className="form-select"
-            style={{ width: '160px' }}
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-          >
-            <option value="">All Categories</option>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#1A1D23' }}>{products.length}</div>
         </div>
-        <div className="toolbar-right">
-          <button className="btn btn-primary" onClick={openAdd}>+ Add Product</button>
+
+        {/* Low Stock */}
+        <div style={{ background: '#fff', borderRadius: 20, padding: '16px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: '#FFF7ED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>⚠️</div>
+            <span style={{ fontSize: 12, textTransform: 'uppercase', color: '#9CA3AF', fontWeight: 600, letterSpacing: '0.05em' }}>Low Stock</span>
+          </div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: lowStockCount > 0 ? '#EF4444' : '#1A1D23' }}>{lowStockCount}</div>
+        </div>
+
+        {/* Total Value */}
+        <div style={{ background: '#fff', borderRadius: 20, padding: '16px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>💰</div>
+            <span style={{ fontSize: 12, textTransform: 'uppercase', color: '#9CA3AF', fontWeight: 600, letterSpacing: '0.05em' }}>Total Value</span>
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: '#1A1D23' }}>{formatLKR(totalValue)}</div>
+        </div>
+
+        {/* Categories */}
+        <div style={{ background: '#fff', borderRadius: 20, padding: '16px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🏷️</div>
+            <span style={{ fontSize: 12, textTransform: 'uppercase', color: '#9CA3AF', fontWeight: 600, letterSpacing: '0.05em' }}>Categories</span>
+          </div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#1A1D23' }}>{uniqueCategories}</div>
         </div>
       </div>
 
+      {/* Products table */}
       {filtered.length === 0 ? (
         <div className="empty-state">
           <span className="icon">📦</span>
@@ -181,49 +248,81 @@ export default function ProductsPage() {
           <p>Add your first product to get started.</p>
         </div>
       ) : (
-        <div className="table-container">
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <table className="table">
             <thead>
               <tr>
-                <th>Name</th>
+                <th style={{ width: 40 }}>#</th>
+                <th>Product</th>
                 <th>Category</th>
-                <th style={{ textAlign: 'right' }}>Cost Price</th>
-                <th style={{ textAlign: 'right' }}>Retail Price</th>
-                <th style={{ textAlign: 'right' }}>Wholesale Price</th>
+                <th style={{ textAlign: 'right' }}>Cost</th>
+                <th style={{ textAlign: 'right' }}>Retail</th>
+                <th style={{ textAlign: 'right' }}>Wholesale</th>
                 <th style={{ textAlign: 'right' }}>Stock</th>
                 <th>Status</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p) => {
+              {filtered.map((p, idx) => {
                 const retailPrice = getRetailPrice(p);
                 const wholesalePrice = getWholesalePrice(p);
                 const isLow = p.stock <= p.lowStockThreshold;
+                const catColor = CATEGORY_COLORS[p.category] ?? CATEGORY_COLORS['Other'];
                 return (
                   <tr key={p._id}>
-                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.name}</td>
-                    <td><span className="badge badge-neutral">{p.category}</span></td>
-                    <td style={{ textAlign: 'right' }}>{formatLKR(p.costPrice)}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--emerald-400)' }}>{formatLKR(retailPrice)}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--amber-400)' }}>{formatLKR(wholesalePrice)}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 600 }}>
+                    <td style={{ color: '#9CA3AF', fontSize: 13 }}>{idx + 1}</td>
+                    <td style={{ fontWeight: 600, color: '#1A1D23' }}>{p.name}</td>
+                    <td>
+                      <span style={{
+                        padding: '3px 10px',
+                        borderRadius: 99,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        background: catColor + '20',
+                        color: catColor,
+                      }}>
+                        {p.category}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'right', color: '#6B7280', fontSize: 13 }}>{formatLKR(p.costPrice)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 600, color: '#22C55E' }}>{formatLKR(retailPrice)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 600, color: '#F59E0B' }}>{formatLKR(wholesalePrice)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 600, color: '#1A1D23' }}>
                       {p.stock} {p.unit}
                     </td>
                     <td>
                       {p.stock === 0 ? (
                         <span className="badge badge-danger">Out of Stock</span>
                       ) : isLow ? (
-                        <span className="badge badge-warning">Low Stock</span>
+                        <span className="badge badge-danger">Low Stock</span>
                       ) : (
                         <span className="badge badge-success">In Stock</span>
                       )}
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                        <button className="btn btn-success btn-sm" onClick={() => openTopup(p)} title="Top Up Stock">+</button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => openEdit(p)}>✏️</button>
-                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(p._id!)}>🗑️</button>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <button
+                          title="Top Up Stock"
+                          onClick={() => openTopup(p)}
+                          style={{ padding: '5px 9px', borderRadius: 9, border: '1.5px solid #ECEEF5', background: '#F0FDF4', cursor: 'pointer', fontSize: 13, color: '#22C55E', fontWeight: 700 }}
+                        >
+                          +
+                        </button>
+                        <button
+                          title="Edit"
+                          onClick={() => openEdit(p)}
+                          style={{ padding: '5px 9px', borderRadius: 9, border: '1.5px solid #ECEEF5', background: '#F8F9FF', cursor: 'pointer', fontSize: 13 }}
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          title="Delete"
+                          onClick={() => handleDelete(p._id!)}
+                          style={{ padding: '5px 9px', borderRadius: 9, border: '1.5px solid #ECEEF5', background: '#F8F9FF', cursor: 'pointer', fontSize: 13 }}
+                        >
+                          🗑️
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -237,21 +336,21 @@ export default function ProductsPage() {
       {/* Top Up Modal */}
       {topupProduct && (
         <div className="modal-overlay" onClick={() => setTopupProduct(null)}>
-          <div className="modal" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Top Up Stock</h2>
               <button className="modal-close" onClick={() => setTopupProduct(null)}>✕</button>
             </div>
             <div className="modal-body">
-              <p style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
-                <strong style={{ color: 'var(--text-primary)' }}>{topupProduct.name}</strong>
+              <p style={{ marginBottom: 16, color: '#6B7280' }}>
+                Adding stock for <strong style={{ color: '#1A1D23' }}>{topupProduct.name}</strong>
               </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', padding: '12px 16px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', fontSize: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, padding: '12px 16px', background: '#F8F9FF', borderRadius: 12, fontSize: 14, flexWrap: 'wrap' }}>
                 <span>Current: <strong>{topupProduct.stock} {topupProduct.unit}</strong></span>
-                <span style={{ color: 'var(--text-muted)' }}>+</span>
-                <span style={{ color: 'var(--emerald-400)' }}>Top Up: <strong>{parseFloat(topupAmount) || 0} {topupProduct.unit}</strong></span>
-                <span style={{ color: 'var(--text-muted)' }}>=</span>
-                <span style={{ color: 'var(--amber-400)' }}>New: <strong>{topupProduct.stock + (parseFloat(topupAmount) || 0)} {topupProduct.unit}</strong></span>
+                <span style={{ color: '#9CA3AF' }}>+</span>
+                <span style={{ color: '#22C55E' }}>Adding: <strong>{parseFloat(topupAmount) || 0} {topupProduct.unit}</strong></span>
+                <span style={{ color: '#9CA3AF' }}>=</span>
+                <span style={{ color: '#F59E0B' }}>New: <strong>{topupProduct.stock + (parseFloat(topupAmount) || 0)} {topupProduct.unit}</strong></span>
               </div>
               <div className="form-group">
                 <label className="form-label">Top Up Amount</label>
@@ -277,7 +376,7 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* Add/Edit Modal */}
+      {/* Add / Edit Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -377,10 +476,10 @@ export default function ProductsPage() {
               {form.costPrice && form.retailPrice && (
                 <div style={{
                   padding: '12px 16px',
-                  background: 'var(--success-soft)',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '13px',
-                  color: 'var(--emerald-300)',
+                  background: '#F0FDF4',
+                  borderRadius: 12,
+                  fontSize: 13,
+                  color: '#16A34A',
                 }}>
                   💰 Retail profit per unit: <strong>{formatLKR(parseFloat(form.retailPrice) - parseFloat(form.costPrice))}</strong>
                   {' '}({((parseFloat(form.retailPrice) - parseFloat(form.costPrice)) / parseFloat(form.retailPrice) * 100).toFixed(1)}% margin)

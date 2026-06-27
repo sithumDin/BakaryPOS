@@ -97,6 +97,14 @@ export default function InventoryPage() {
     note: '',
   });
 
+  // UI state
+  const [showModal, setShowModal] = useState(false);
+  const [showRestockModal, setShowRestockModal] = useState(false);
+  const [showUsageModal, setShowUsageModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [stockFilter, setStockFilter] = useState('all');
+
   const fetchInventory = async (selectedPeriod: Period = period) => {
     setLoading(true);
     try {
@@ -167,6 +175,7 @@ export default function InventoryPage() {
       }
 
       resetForm();
+      setShowModal(false);
       await fetchInventory(period);
     } catch (error) {
       console.error(error);
@@ -190,7 +199,7 @@ export default function InventoryPage() {
       supplier: ingredient.supplier || '',
       notes: ingredient.notes || '',
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setShowModal(true);
   };
 
   const handleDelete = async (ingredient: Ingredient) => {
@@ -224,6 +233,7 @@ export default function InventoryPage() {
       });
       if (!res.ok) { const err = await res.json().catch(() => ({ error: 'Top up failed' })); throw new Error(err.error || 'Top up failed'); }
       setTopup({ ingredientId: '', qty: '', reference: '', note: '' });
+      setShowRestockModal(false);
       await fetchInventory(period);
     } catch (error) {
       console.error(error);
@@ -246,6 +256,7 @@ export default function InventoryPage() {
       });
       if (!res.ok) { const err = await res.json().catch(() => ({ error: 'Save failed' })); throw new Error(err.error || 'Save failed'); }
       setMovement({ ingredientId: '', type: 'usage', qty: '', note: '' });
+      setShowUsageModal(false);
       await fetchInventory(period);
     } catch (error) {
       console.error(error);
@@ -286,256 +297,531 @@ export default function InventoryPage() {
     [data.ingredients, movement.ingredientId]
   );
 
+  // Derived data for UI
+  const outOfStockCount = data.ingredients.filter((i) => i.stock <= 0).length;
+  const totalStockUnits = data.ingredients.reduce((sum, i) => sum + i.stock, 0);
+  const categories = [...new Set(data.ingredients.map((i) => i.category).filter(Boolean))];
+
+  const getStockStatus = (item: Ingredient) => {
+    if (item.stock <= 0) return 'out';
+    if (item.stock <= item.lowStockThreshold) return 'low';
+    return 'ok';
+  };
+
+  const filteredIngredients = data.ingredients.filter((item) => {
+    const q = searchQuery.toLowerCase();
+    const matchSearch = !q || item.name.toLowerCase().includes(q) || item.category.toLowerCase().includes(q) || (item.supplier || '').toLowerCase().includes(q);
+    const matchCategory = !categoryFilter || item.category === categoryFilter;
+    const status = getStockStatus(item);
+    const matchStock = stockFilter === 'all' || status === stockFilter;
+    return matchSearch && matchCategory && matchStock;
+  });
+
   if (loading) {
     return <div className="loading-spinner"><div className="spinner" /></div>;
   }
 
+  const cardStyle: React.CSSProperties = {
+    background: '#fff',
+    borderRadius: 20,
+    padding: '16px 20px',
+    border: '1px solid #ECEEF5',
+    boxShadow: '0 2px 14px rgba(0,0,0,0.05)',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: 12,
+    fontWeight: 700,
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    display: 'block',
+    marginBottom: 6,
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    boxSizing: 'border-box',
+  };
+
   return (
-    <div className="animate-fade-in">
-      <div className="page-header">
-        <h1>🧾 Inventory Management</h1>
-        <p>Track bakery raw materials — add materials, top up stock, and record daily usage</p>
-      </div>
+    <div className="animate-fade-in" style={{ padding: '24px', maxWidth: 1440, margin: '0 auto' }}>
 
-      <div style={{ padding: '20px', maxWidth: '1440px', margin: '0 auto' }}>
-
-        {/* ── Period toggles ── */}
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-          {(['day', 'week', 'month'] as Period[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              style={{
-                padding: '10px 18px',
-                borderRadius: 'var(--radius-md)',
-                border: 'none',
-                cursor: 'pointer',
-                fontWeight: 700,
-                background: period === p ? 'var(--emerald-500)' : 'var(--bg-card)',
-                color: period === p ? '#fff' : 'var(--text-primary)',
-              }}
-            >
-              {p === 'day' ? 'Daily' : p === 'week' ? 'Weekly' : 'Monthly'}
-            </button>
-          ))}
+      {/* ── Header Row ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 900, color: '#1A1D23', margin: 0 }}>Inventory</h1>
+          <p style={{ fontSize: 13, color: '#9CA3AF', margin: '4px 0 0' }}>Track stock levels and manage inventory</p>
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Period Toggles */}
+          <div style={{ display: 'flex', gap: 4, background: '#F3F4F6', borderRadius: 10, padding: 4 }}>
+            {(['day', 'week', 'month'] as Period[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 8,
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  fontSize: 12,
+                  background: period === p ? '#2563EB' : 'transparent',
+                  color: period === p ? '#fff' : '#6B7280',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {p === 'day' ? 'Daily' : p === 'week' ? 'Weekly' : 'Monthly'}
+              </button>
+            ))}
+          </div>
           <button
             onClick={handleQuickSeed}
             disabled={saving}
-            style={{ padding: '10px 18px', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer', fontWeight: 700, background: 'var(--warning)', color: '#fff', opacity: saving ? 0.7 : 1 }}
+            style={{ padding: '8px 14px', borderRadius: 10, border: '1.5px solid #E5E7EB', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: '#fff', color: '#374151', opacity: saving ? 0.7 : 1 }}
           >
-            {saving ? 'Adding...' : 'Quick Add Default Materials'}
+            {saving ? 'Adding…' : 'Quick Add Defaults'}
+          </button>
+          <button
+            onClick={() => setShowUsageModal(true)}
+            style={{ padding: '8px 14px', borderRadius: 10, border: '1.5px solid #E5E7EB', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: '#fff', color: '#374151' }}
+          >
+            − Record Usage
+          </button>
+          <button
+            onClick={() => { resetForm(); setShowModal(true); }}
+            className="btn btn-primary"
+          >
+            + Add Item
           </button>
         </div>
+      </div>
 
-        {/* ── Main 3-column grid: each column is self-contained ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', alignItems: 'start', marginBottom: '20px' }}>
-
-          {/* Col 1 — Raw Material Setup */}
-          <div style={{ display: 'grid', gap: '20px' }}>
-            <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '2px solid var(--border-color)', padding: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h2 style={{ margin: 0 }}>Raw Material Setup</h2>
-                {editingId && <span style={{ color: 'var(--warning)', fontWeight: 700, fontSize: '13px' }}>Editing</span>}
-              </div>
-              <div style={{ display: 'grid', gap: '10px' }}>
-                <input placeholder="Material name *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="form-input" />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <input placeholder="Category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="form-input" />
-                  <input placeholder="Unit (kg, L…)" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className="form-input" />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <input placeholder="Starting stock" type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} className="form-input" />
-                  <input placeholder="Low stock alert" type="number" value={form.lowStockThreshold} onChange={(e) => setForm({ ...form, lowStockThreshold: e.target.value })} className="form-input" />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-                  <input placeholder="Daily target" type="number" value={form.dailyUsageTarget} onChange={(e) => setForm({ ...form, dailyUsageTarget: e.target.value })} className="form-input" />
-                  <input placeholder="Weekly target" type="number" value={form.weeklyUsageTarget} onChange={(e) => setForm({ ...form, weeklyUsageTarget: e.target.value })} className="form-input" />
-                  <input placeholder="Monthly target" type="number" value={form.monthlyUsageTarget} onChange={(e) => setForm({ ...form, monthlyUsageTarget: e.target.value })} className="form-input" />
-                </div>
-                <input placeholder="Supplier" value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} className="form-input" />
-                <textarea placeholder="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="form-input" style={{ minHeight: '72px', resize: 'vertical' }} />
-              </div>
-              <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
-                <button onClick={handleSave} disabled={saving} className="btn btn-primary">
-                  {saving ? 'Saving…' : editingId ? 'Update Material' : 'Add Material'}
-                </button>
-                <button onClick={resetForm} className="btn" style={{ background: 'var(--bg-input)', color: 'var(--text-primary)' }}>Clear</button>
-              </div>
-            </div>
-
-            {/* Overview pill — sits below Raw Material Setup */}
-            <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '2px solid var(--border-color)', padding: '16px 20px', display: 'flex', gap: '24px', alignItems: 'center' }}>
-              <div style={{ fontSize: '14px' }}><strong style={{ fontSize: '22px' }}>{data.ingredients.length}</strong><br /><span style={{ color: 'var(--text-muted)' }}>materials</span></div>
-              <div style={{ width: '1px', background: 'var(--border-color)', alignSelf: 'stretch' }} />
-              <div style={{ fontSize: '14px', color: data.lowStockItems.length > 0 ? '#ef4444' : 'var(--text-muted)' }}>
-                <strong style={{ fontSize: '22px' }}>{data.lowStockItems.length}</strong><br />low stock
-              </div>
-            </div>
-          </div>
-
-          {/* Col 2 — Top Up Materials + Low Stock Alerts */}
-          <div style={{ display: 'grid', gap: '20px' }}>
-            <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '2px solid #22c55e44', padding: '20px' }}>
-              <h2 style={{ marginTop: 0, color: '#22c55e' }}>Top Up Materials</h2>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '-8px', marginBottom: '14px' }}>Add new stock / purchase refill</p>
-              <div style={{ display: 'grid', gap: '10px' }}>
-                <select value={topup.ingredientId} onChange={(e) => setTopup({ ...topup, ingredientId: e.target.value })} className="form-input">
-                  <option value="">Select material</option>
-                  {data.ingredients.map((item) => (
-                    <option key={item._id} value={item._id}>{item.name} — {item.stock} {item.unit} in stock</option>
-                  ))}
-                </select>
-                {topupIngredient && (
-                  <div style={{ padding: '8px 12px', background: 'rgba(34,197,94,0.08)', borderRadius: 'var(--radius-md)', fontSize: '13px', border: '1px solid rgba(34,197,94,0.2)' }}>
-                    Current stock: <strong>{topupIngredient.stock} {topupIngredient.unit}</strong>
-                  </div>
-                )}
-                <input type="number" min="0" placeholder="Quantity to add *" value={topup.qty} onChange={(e) => setTopup({ ...topup, qty: e.target.value })} className="form-input" />
-                <input placeholder="Reference / Batch no." value={topup.reference} onChange={(e) => setTopup({ ...topup, reference: e.target.value })} className="form-input" />
-                <textarea placeholder="Note (optional)" value={topup.note} onChange={(e) => setTopup({ ...topup, note: e.target.value })} className="form-input" style={{ minHeight: '72px', resize: 'vertical' }} />
-              </div>
-              <button onClick={handleTopup} disabled={toppingUp} className="btn" style={{ marginTop: '14px', background: '#22c55e', color: '#fff', width: '100%', fontWeight: 700 }}>
-                {toppingUp ? 'Saving…' : '+ Top Up Stock'}
-              </button>
-            </div>
-
-            {/* Low Stock Alerts — fills blank below Top Up */}
-            <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '2px solid var(--border-color)', padding: '20px' }}>
-              <h2 style={{ marginTop: 0, fontSize: '16px' }}>Low Stock Alerts</h2>
-              {data.lowStockItems.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', margin: 0 }}>All materials sufficiently stocked.</p>
-              ) : (
-                <div style={{ display: 'grid', gap: '8px' }}>
-                  {data.lowStockItems.map((item) => (
-                    <div key={item._id} style={{ padding: '8px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(239,68,68,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontWeight: 700 }}>{item.name}</span>
-                      <span style={{ fontSize: '13px', color: '#ef4444' }}>{item.stock} / {item.lowStockThreshold} {item.unit}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Col 3 — Record Usage + Stock Summary */}
-          <div style={{ display: 'grid', gap: '20px' }}>
-            <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '2px solid rgba(239,68,68,0.3)', padding: '20px' }}>
-              <h2 style={{ marginTop: 0, color: '#ef4444' }}>Record Usage</h2>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '-8px', marginBottom: '14px' }}>Log daily consumption or waste</p>
-              <div style={{ display: 'grid', gap: '10px' }}>
-                <select value={movement.ingredientId} onChange={(e) => setMovement({ ...movement, ingredientId: e.target.value })} className="form-input">
-                  <option value="">Select material</option>
-                  {data.ingredients.map((item) => (
-                    <option key={item._id} value={item._id}>{item.name} — {item.stock} {item.unit} in stock</option>
-                  ))}
-                </select>
-                {usageIngredient && (
-                  <div style={{ padding: '8px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: 'var(--radius-md)', fontSize: '13px', border: '1px solid rgba(239,68,68,0.2)' }}>
-                    Current stock: <strong>{usageIngredient.stock} {usageIngredient.unit}</strong>
-                  </div>
-                )}
-                <select value={movement.type} onChange={(e) => setMovement({ ...movement, type: e.target.value })} className="form-input">
-                  <option value="usage">Usage / Consumption</option>
-                  <option value="waste">Waste</option>
-                </select>
-                <input type="number" min="0" placeholder="Quantity used *" value={movement.qty} onChange={(e) => setMovement({ ...movement, qty: e.target.value })} className="form-input" />
-                <textarea placeholder="Note (optional)" value={movement.note} onChange={(e) => setMovement({ ...movement, note: e.target.value })} className="form-input" style={{ minHeight: '72px', resize: 'vertical' }} />
-              </div>
-              <button onClick={handleMovement} disabled={posting} className="btn" style={{ marginTop: '14px', background: '#ef4444', color: '#fff', width: '100%', fontWeight: 700 }}>
-                {posting ? 'Saving…' : '− Record Usage'}
-              </button>
-            </div>
-
-            {/* Stock Summary — fills blank below Record Usage */}
-            <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '2px solid var(--border-color)', padding: '20px' }}>
-              <h2 style={{ marginTop: 0, fontSize: '16px' }}>
-                {period === 'day' ? "Today's Stock Summary" : period === 'week' ? 'Weekly Usage' : 'Monthly Usage'}
-              </h2>
-              {period === 'day' ? (
-                data.dailySummary.length === 0 ? (
-                  <p style={{ color: 'var(--text-muted)', margin: 0 }}>No stock movements today yet.</p>
-                ) : (
-                  <div style={{ display: 'grid', gap: '10px' }}>
-                    {data.dailySummary.map((item) => (
-                      <div key={item.ingredientId} style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius-md)', padding: '10px 12px' }}>
-                        <div style={{ fontWeight: 700, marginBottom: '6px' }}>{item.name}</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 12px', fontSize: '13px' }}>
-                          <span style={{ color: 'var(--text-muted)' }}>Opening</span>
-                          <span style={{ textAlign: 'right' }}>{formatNumber(item.openingStock)} {item.unit}</span>
-                          <span style={{ color: '#22c55e' }}>+ Top up</span>
-                          <span style={{ textAlign: 'right', color: '#22c55e', fontWeight: 600 }}>+{formatNumber(item.topupToday)} {item.unit}</span>
-                          <span style={{ color: '#ef4444' }}>− Used</span>
-                          <span style={{ textAlign: 'right', color: '#ef4444', fontWeight: 600 }}>−{formatNumber(item.usedToday)} {item.unit}</span>
-                          <span style={{ fontWeight: 700, borderTop: '1px solid var(--border-color)', paddingTop: '5px' }}>Remaining</span>
-                          <span style={{ textAlign: 'right', fontWeight: 700, borderTop: '1px solid var(--border-color)', paddingTop: '5px', color: item.remaining <= 0 ? '#ef4444' : 'var(--text-primary)' }}>{formatNumber(item.remaining)} {item.unit}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )
-              ) : (
-                data.usageSummary.length === 0 ? (
-                  <p style={{ color: 'var(--text-muted)', margin: 0 }}>No usage recorded for this period.</p>
-                ) : (
-                  <div style={{ display: 'grid', gap: '8px' }}>
-                    {data.usageSummary.map((item) => (
-                      <div key={item.ingredientId} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--bg-input)', borderRadius: 'var(--radius-md)' }}>
-                        <span>{item.name}</span>
-                        <strong>{formatNumber(item.qty)} {item.unit}</strong>
-                      </div>
-                    ))}
-                  </div>
-                )
-              )}
-            </div>
-          </div>
+      {/* ── Low Stock Warning Banner ── */}
+      {data.lowStockItems.length > 0 && (
+        <div style={{ background: '#FFF7ED', border: '1.5px solid #FED7AA', borderRadius: 14, padding: '12px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#C2410C', flexWrap: 'wrap' }}>
+          <span>⚠️</span>
+          <strong>{data.lowStockItems.length} item{data.lowStockItems.length > 1 ? 's are' : ' is'} running low:</strong>
+          {data.lowStockItems.map((item, i) => (
+            <span key={item._id}>{i > 0 ? ', ' : ''}{item.name} ({item.stock} {item.unit})</span>
+          ))}
         </div>
+      )}
 
-        <div style={{ marginTop: '20px', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '2px solid var(--border-color)', overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0 }}>All Materials</h2>
-            <span style={{ color: 'var(--text-muted)' }}>{data.ingredients.length} records</span>
+      {/* ── Stat Cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+        <div style={cardStyle}>
+          <div style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Items</div>
+          <div style={{ fontSize: 28, fontWeight: 900, color: '#1A1D23' }}>{data.ingredients.length}</div>
+          <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>ingredients tracked</div>
+        </div>
+        <div style={cardStyle}>
+          <div style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Low Stock</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 20 }}>⚠️</span>
+            <span style={{ fontSize: 28, fontWeight: 900, color: data.lowStockItems.length > 0 ? '#D97706' : '#1A1D23' }}>{data.lowStockItems.length}</span>
           </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: 'var(--bg-input)' }}>
-                  <th style={{ textAlign: 'left', padding: '12px' }}>Name</th>
-                  <th style={{ textAlign: 'left', padding: '12px' }}>Category</th>
-                  <th style={{ textAlign: 'right', padding: '12px' }}>Stock</th>
-                  <th style={{ textAlign: 'right', padding: '12px' }}>Threshold</th>
-                  <th style={{ textAlign: 'right', padding: '12px' }}>Daily Target</th>
-                  <th style={{ textAlign: 'right', padding: '12px' }}>Weekly Target</th>
-                  <th style={{ textAlign: 'right', padding: '12px' }}>Monthly Target</th>
-                  <th style={{ textAlign: 'center', padding: '12px' }}>Actions</th>
+          <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>need restocking</div>
+        </div>
+        <div style={cardStyle}>
+          <div style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Out of Stock</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 20 }}>🚫</span>
+            <span style={{ fontSize: 28, fontWeight: 900, color: outOfStockCount > 0 ? '#DC2626' : '#1A1D23' }}>{outOfStockCount}</span>
+          </div>
+          <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>completely empty</div>
+        </div>
+        <div style={cardStyle}>
+          <div style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Stock</div>
+          <div style={{ fontSize: 28, fontWeight: 900, color: '#1A1D23' }}>{formatNumber(totalStockUnits)}</div>
+          <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>combined units</div>
+        </div>
+      </div>
+
+      {/* ── Search + Filter Row ── */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+          <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF', fontSize: 15, pointerEvents: 'none' }}>🔍</span>
+          <input
+            placeholder="Search by name, category, supplier…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ width: '100%', paddingLeft: 38, paddingRight: 14, paddingTop: 10, paddingBottom: 10, borderRadius: 50, border: '1.5px solid #E5E7EB', background: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box', color: '#374151' }}
+          />
+        </div>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          style={{ padding: '10px 14px', borderRadius: 10, border: '1.5px solid #E5E7EB', background: '#fff', fontSize: 14, color: '#374151', cursor: 'pointer', outline: 'none' }}
+        >
+          <option value="">All Categories</option>
+          {categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+        </select>
+        <select
+          value={stockFilter}
+          onChange={(e) => setStockFilter(e.target.value)}
+          style={{ padding: '10px 14px', borderRadius: 10, border: '1.5px solid #E5E7EB', background: '#fff', fontSize: 14, color: '#374151', cursor: 'pointer', outline: 'none' }}
+        >
+          <option value="all">All Stock</option>
+          <option value="ok">OK</option>
+          <option value="low">Low</option>
+          <option value="out">Out</option>
+        </select>
+      </div>
+
+      {/* ── Inventory Table ── */}
+      <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 24 }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #ECEEF5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontWeight: 700, color: '#1A1D23', fontSize: 15 }}>All Materials</span>
+          <span style={{ fontSize: 13, color: '#9CA3AF' }}>{filteredIngredients.length} of {data.ingredients.length} records</span>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#F9FAFB' }}>
+                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: 12, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5 }}>Material</th>
+                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: 12, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5 }}>Category</th>
+                <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: 12, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5 }}>Stock</th>
+                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: 12, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5, minWidth: 120 }}>Level</th>
+                <th style={{ textAlign: 'center', padding: '12px 16px', fontSize: 12, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5 }}>Status</th>
+                <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: 12, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5 }}>Threshold</th>
+                <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: 12, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5 }}>Daily Target</th>
+                <th style={{ textAlign: 'center', padding: '12px 16px', fontSize: 12, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5 }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredIngredients.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px 20px', color: '#9CA3AF', fontSize: 14 }}>
+                    No materials found.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {data.ingredients.map((item) => {
-                  const low = item.stock <= item.lowStockThreshold;
+              ) : (
+                filteredIngredients.map((item) => {
+                  const status = getStockStatus(item);
+                  const maxRef = Math.max(item.lowStockThreshold * 3, item.stock, 1);
+                  const pct = Math.min(100, (item.stock / maxRef) * 100);
+                  const barColor = status === 'out' ? '#DC2626' : status === 'low' ? '#D97706' : '#2563EB';
                   return (
-                    <tr key={item._id} style={{ borderTop: '1px solid var(--border-color)' }}>
-                      <td style={{ padding: '12px' }}>{item.name}</td>
-                      <td style={{ padding: '12px' }}>{item.category}</td>
-                      <td style={{ padding: '12px', textAlign: 'right', color: low ? 'var(--danger)' : 'var(--text-primary)', fontWeight: 700 }}>{item.stock} {item.unit}</td>
-                      <td style={{ padding: '12px', textAlign: 'right' }}>{item.lowStockThreshold} {item.unit}</td>
-                      <td style={{ padding: '12px', textAlign: 'right' }}>{item.dailyUsageTarget ?? 0} {item.unit}</td>
-                      <td style={{ padding: '12px', textAlign: 'right' }}>{item.weeklyUsageTarget} {item.unit}</td>
-                      <td style={{ padding: '12px', textAlign: 'right' }}>{item.monthlyUsageTarget} {item.unit}</td>
-                      <td style={{ padding: '12px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                          <button onClick={() => handleEdit(item)} className="btn" style={{ background: 'var(--info)', color: '#fff', padding: '6px 10px' }}>Edit</button>
-                          <button onClick={() => handleDelete(item)} className="btn" style={{ background: 'var(--danger)', color: '#fff', padding: '6px 10px' }}>Delete</button>
+                    <tr key={item._id} style={{ borderTop: '1px solid #F3F4F6' }}>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ fontWeight: 700, color: '#1A1D23', fontSize: 14 }}>{item.name}</div>
+                        {item.supplier && <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>{item.supplier}</div>}
+                      </td>
+                      <td style={{ padding: '14px 16px', color: '#6B7280', fontSize: 13 }}>{item.category}</td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', color: status === 'out' ? '#DC2626' : status === 'low' ? '#D97706' : '#1A1D23' }}>
+                        {item.stock} {item.unit}
+                      </td>
+                      <td style={{ padding: '14px 16px', minWidth: 120 }}>
+                        <div style={{ background: '#F3F4F6', borderRadius: 99, height: 6, width: '100%', overflow: 'hidden' }}>
+                          <div style={{ background: barColor, borderRadius: 99, height: '100%', width: `${pct}%`, transition: 'width 0.3s' }} />
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '3px 10px',
+                          borderRadius: 99,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.5,
+                          background: status === 'out' ? '#FEE2E2' : status === 'low' ? '#FEF3C7' : '#DCFCE7',
+                          color: status === 'out' ? '#DC2626' : status === 'low' ? '#D97706' : '#16A34A',
+                        }}>
+                          {status === 'out' ? 'Out' : status === 'low' ? 'Low' : 'OK'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right', color: '#6B7280', fontSize: 13, whiteSpace: 'nowrap' }}>
+                        {item.lowStockThreshold} {item.unit}
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right', color: '#6B7280', fontSize: 13, whiteSpace: 'nowrap' }}>
+                        {item.dailyUsageTarget ?? 0} {item.unit}
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: 6 }}>
+                          <button
+                            onClick={() => { setTopup({ ...topup, ingredientId: item._id || '' }); setShowRestockModal(true); }}
+                            style={{ padding: '5px 10px', borderRadius: 8, border: 'none', background: '#DCFCE7', color: '#16A34A', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
+                          >
+                            Restock
+                          </button>
+                          <button
+                            onClick={() => handleEdit(item)}
+                            style={{ padding: '5px 10px', borderRadius: 8, border: 'none', background: '#DBEAFE', color: '#2563EB', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item)}
+                            style={{ padding: '5px 10px', borderRadius: 8, border: 'none', background: '#FEE2E2', color: '#DC2626', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
+                          >
+                            Delete
+                          </button>
                         </div>
                       </td>
                     </tr>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
+
+      {/* ── Stock Summary ── */}
+      <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)', padding: 20 }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: '#1A1D23' }}>
+          {period === 'day' ? "Today's Stock Summary" : period === 'week' ? 'Weekly Usage' : 'Monthly Usage'}
+        </h2>
+        {period === 'day' ? (
+          data.dailySummary.length === 0 ? (
+            <p style={{ color: '#9CA3AF', margin: 0, fontSize: 14 }}>No stock movements today yet.</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+              {data.dailySummary.map((item) => (
+                <div key={item.ingredientId} style={{ background: '#F9FAFB', borderRadius: 14, padding: '12px 16px', border: '1px solid #ECEEF5' }}>
+                  <div style={{ fontWeight: 700, marginBottom: 10, color: '#1A1D23', fontSize: 14 }}>{item.name}</div>
+                  <div style={{ display: 'grid', gap: 5, fontSize: 13 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#9CA3AF' }}>Opening</span>
+                      <span style={{ color: '#374151' }}>{formatNumber(item.openingStock)} {item.unit}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#16A34A' }}>+ Top up</span>
+                      <span style={{ color: '#16A34A', fontWeight: 600 }}>+{formatNumber(item.topupToday)} {item.unit}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#DC2626' }}>− Used</span>
+                      <span style={{ color: '#DC2626', fontWeight: 600 }}>−{formatNumber(item.usedToday)} {item.unit}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #E5E7EB', paddingTop: 6, marginTop: 2 }}>
+                      <span style={{ fontWeight: 700, color: '#1A1D23' }}>Remaining</span>
+                      <span style={{ fontWeight: 700, color: item.remaining <= 0 ? '#DC2626' : '#1A1D23' }}>{formatNumber(item.remaining)} {item.unit}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          data.usageSummary.length === 0 ? (
+            <p style={{ color: '#9CA3AF', margin: 0, fontSize: 14 }}>No usage recorded for this period.</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
+              {data.usageSummary.map((item) => (
+                <div key={item.ingredientId} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: '#F9FAFB', borderRadius: 12, border: '1px solid #ECEEF5', fontSize: 13 }}>
+                  <span style={{ color: '#374151' }}>{item.name}</span>
+                  <strong style={{ color: '#1A1D23' }}>{formatNumber(item.qty)} {item.unit}</strong>
+                </div>
+              ))}
+            </div>
+          )
+        )}
+      </div>
+
+      {/* ── Add / Edit Modal ── */}
+      {showModal && (
+        <div
+          className="modal-overlay"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}
+          onClick={(e) => { if (e.target === e.currentTarget) { resetForm(); setShowModal(false); } }}
+        >
+          <div
+            className="modal"
+            style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#1A1D23' }}>
+                {editingId ? 'Edit Material' : 'Add New Material'}
+              </h2>
+              <button onClick={() => { resetForm(); setShowModal(false); }} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#9CA3AF', lineHeight: 1 }}>×</button>
+            </div>
+
+            <div style={{ display: 'grid', gap: 14 }}>
+              <div className="form-group">
+                <label className="form-label" style={labelStyle}>Material Name *</label>
+                <input placeholder="e.g. Flour" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="form-input" style={inputStyle} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="form-group">
+                  <label className="form-label" style={labelStyle}>Category</label>
+                  <input placeholder="e.g. Bakery Raw Material" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="form-input" style={inputStyle} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={labelStyle}>Unit</label>
+                  <input placeholder="kg, L, pcs…" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className="form-input" style={inputStyle} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="form-group">
+                  <label className="form-label" style={labelStyle}>Starting Stock</label>
+                  <input type="number" placeholder="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} className="form-input" style={inputStyle} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={labelStyle}>Low Stock Alert</label>
+                  <input type="number" placeholder="0" value={form.lowStockThreshold} onChange={(e) => setForm({ ...form, lowStockThreshold: e.target.value })} className="form-input" style={inputStyle} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                <div className="form-group">
+                  <label className="form-label" style={labelStyle}>Daily Target</label>
+                  <input type="number" placeholder="0" value={form.dailyUsageTarget} onChange={(e) => setForm({ ...form, dailyUsageTarget: e.target.value })} className="form-input" style={inputStyle} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={labelStyle}>Weekly Target</label>
+                  <input type="number" placeholder="0" value={form.weeklyUsageTarget} onChange={(e) => setForm({ ...form, weeklyUsageTarget: e.target.value })} className="form-input" style={inputStyle} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={labelStyle}>Monthly Target</label>
+                  <input type="number" placeholder="0" value={form.monthlyUsageTarget} onChange={(e) => setForm({ ...form, monthlyUsageTarget: e.target.value })} className="form-input" style={inputStyle} />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={labelStyle}>Supplier</label>
+                <input placeholder="Supplier name" value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} className="form-input" style={inputStyle} />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={labelStyle}>Notes</label>
+                <textarea placeholder="Optional notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="form-input" style={{ ...inputStyle, minHeight: 72, resize: 'vertical' }} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 20, borderTop: '1px solid #ECEEF5' }}>
+              <button onClick={() => { resetForm(); setShowModal(false); }} style={{ padding: '10px 20px', borderRadius: 10, border: '1.5px solid #E5E7EB', background: '#fff', color: '#374151', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={handleSave} disabled={saving} className="btn btn-primary">
+                {saving ? 'Saving…' : editingId ? 'Update Material' : 'Save Material'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Restock Modal ── */}
+      {showRestockModal && (
+        <div
+          className="modal-overlay"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowRestockModal(false); }}
+        >
+          <div
+            className="modal"
+            style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#1A1D23' }}>Restock Material</h2>
+              <button onClick={() => setShowRestockModal(false)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#9CA3AF', lineHeight: 1 }}>×</button>
+            </div>
+
+            <div style={{ display: 'grid', gap: 14 }}>
+              <div className="form-group">
+                <label className="form-label" style={labelStyle}>Material</label>
+                <select value={topup.ingredientId} onChange={(e) => setTopup({ ...topup, ingredientId: e.target.value })} className="form-select form-input" style={inputStyle}>
+                  <option value="">Select material</option>
+                  {data.ingredients.map((item) => (
+                    <option key={item._id} value={item._id}>{item.name} — {item.stock} {item.unit} in stock</option>
+                  ))}
+                </select>
+              </div>
+              {topupIngredient && (
+                <div style={{ padding: '8px 12px', background: '#DCFCE7', borderRadius: 10, fontSize: 13, color: '#16A34A', fontWeight: 600 }}>
+                  Current stock: {topupIngredient.stock} {topupIngredient.unit}
+                </div>
+              )}
+              <div className="form-group">
+                <label className="form-label" style={labelStyle}>Quantity to Add *</label>
+                <input type="number" min="0" placeholder="0" value={topup.qty} onChange={(e) => setTopup({ ...topup, qty: e.target.value })} className="form-input" style={inputStyle} />
+              </div>
+              <div className="form-group">
+                <label className="form-label" style={labelStyle}>Reference / Batch No.</label>
+                <input placeholder="Optional" value={topup.reference} onChange={(e) => setTopup({ ...topup, reference: e.target.value })} className="form-input" style={inputStyle} />
+              </div>
+              <div className="form-group">
+                <label className="form-label" style={labelStyle}>Note</label>
+                <textarea placeholder="Optional" value={topup.note} onChange={(e) => setTopup({ ...topup, note: e.target.value })} className="form-input" style={{ ...inputStyle, minHeight: 72, resize: 'vertical' }} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 20, borderTop: '1px solid #ECEEF5' }}>
+              <button onClick={() => setShowRestockModal(false)} style={{ padding: '10px 20px', borderRadius: 10, border: '1.5px solid #E5E7EB', background: '#fff', color: '#374151', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={handleTopup} disabled={toppingUp} style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: '#16A34A', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', opacity: toppingUp ? 0.7 : 1 }}>
+                {toppingUp ? 'Saving…' : '+ Top Up Stock'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Record Usage Modal ── */}
+      {showUsageModal && (
+        <div
+          className="modal-overlay"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowUsageModal(false); }}
+        >
+          <div
+            className="modal"
+            style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#1A1D23' }}>Record Usage</h2>
+              <button onClick={() => setShowUsageModal(false)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#9CA3AF', lineHeight: 1 }}>×</button>
+            </div>
+
+            <div style={{ display: 'grid', gap: 14 }}>
+              <div className="form-group">
+                <label className="form-label" style={labelStyle}>Material</label>
+                <select value={movement.ingredientId} onChange={(e) => setMovement({ ...movement, ingredientId: e.target.value })} className="form-select form-input" style={inputStyle}>
+                  <option value="">Select material</option>
+                  {data.ingredients.map((item) => (
+                    <option key={item._id} value={item._id}>{item.name} — {item.stock} {item.unit} in stock</option>
+                  ))}
+                </select>
+              </div>
+              {usageIngredient && (
+                <div style={{ padding: '8px 12px', background: '#FEE2E2', borderRadius: 10, fontSize: 13, color: '#DC2626', fontWeight: 600 }}>
+                  Current stock: {usageIngredient.stock} {usageIngredient.unit}
+                </div>
+              )}
+              <div className="form-group">
+                <label className="form-label" style={labelStyle}>Type</label>
+                <select value={movement.type} onChange={(e) => setMovement({ ...movement, type: e.target.value })} className="form-select form-input" style={inputStyle}>
+                  <option value="usage">Usage / Consumption</option>
+                  <option value="waste">Waste</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label" style={labelStyle}>Quantity Used *</label>
+                <input type="number" min="0" placeholder="0" value={movement.qty} onChange={(e) => setMovement({ ...movement, qty: e.target.value })} className="form-input" style={inputStyle} />
+              </div>
+              <div className="form-group">
+                <label className="form-label" style={labelStyle}>Note</label>
+                <textarea placeholder="Optional" value={movement.note} onChange={(e) => setMovement({ ...movement, note: e.target.value })} className="form-input" style={{ ...inputStyle, minHeight: 72, resize: 'vertical' }} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 20, borderTop: '1px solid #ECEEF5' }}>
+              <button onClick={() => setShowUsageModal(false)} style={{ padding: '10px 20px', borderRadius: 10, border: '1.5px solid #E5E7EB', background: '#fff', color: '#374151', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={handleMovement} disabled={posting} style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: '#DC2626', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', opacity: posting ? 0.7 : 1 }}>
+                {posting ? 'Saving…' : '− Record Usage'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

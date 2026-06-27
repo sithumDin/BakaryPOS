@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import {
   Wheat, Cake, Croissant, Cookie, Sandwich, Coffee, Package, UtensilsCrossed,
-  LayoutGrid, Search, ShoppingBag, ArrowRight, Calendar, Clock, Tag, Settings2, X, Loader2, AlertTriangle,
+  LayoutGrid, Search, ShoppingBag, Calendar, Clock, X, Loader2, AlertTriangle,
+  Menu, Pencil, Power, Check, Tag,
   type LucideIcon,
 } from 'lucide-react';
 import { Product, CartItem, CATEGORIES } from '@/lib/types';
@@ -177,12 +178,11 @@ export default function RetailPage() {
               const waData = await waRes.json().catch(() => ({ error: 'Failed to send WhatsApp' }));
               const errorText = String(waData.error || 'Unknown error');
               const lowerError = errorText.toLowerCase();
-              if (lowerError.includes('not configured')) alert(`Sale completed. WhatsApp failed: ${errorText}. Please set WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID, then restart the server.`);
-              else if (lowerError.includes('session has expired') || lowerError.includes('error validating access token') || lowerError.includes('invalid oauth access token')) alert(`Sale completed. WhatsApp failed: ${errorText}. Please regenerate WHATSAPP_ACCESS_TOKEN in Meta and restart the server.`);
-              else if (lowerError.includes('invalid phone') || lowerError.includes('invalid wa id') || lowerError.includes('phone number')) alert(`Sale completed. WhatsApp failed: ${errorText}. Please ensure the phone number is correct with country code (+94).`);
-              else alert(`Sale completed. WhatsApp failed: ${errorText}. Please check WhatsApp API credentials and try again.`);
+              if (lowerError.includes('not configured')) alert(`Sale completed. WhatsApp failed: ${errorText}.`);
+              else if (lowerError.includes('session has expired') || lowerError.includes('invalid oauth')) alert(`Sale completed. WhatsApp token expired: ${errorText}.`);
+              else alert(`Sale completed. WhatsApp failed: ${errorText}.`);
             }
-          } catch (error) { console.error('WhatsApp send error:', error); alert('Sale completed. WhatsApp could not be sent due to a network error.'); }
+          } catch (error) { console.error('WhatsApp send error:', error); alert('Sale completed. WhatsApp could not be sent.'); }
         } else { alert('Sale completed.'); }
         setCart([]); setDiscount(''); setOtherCharges(''); setOtherChargesDescription('');
         setCustomerName(''); setCustomerPhone(''); setCreditUpfrontPayment('');
@@ -250,28 +250,28 @@ export default function RetailPage() {
     }
   };
 
+  const paymentLabel = isCredit ? 'Credit' : paymentMethod === 'cash' ? 'Cash' : 'Transfer';
+
   return (
-    <div style={{ display: 'flex', margin: '-28px -32px', height: '100vh', overflow: 'hidden', background: '#F4F6FB' }}>
+    <div style={{ display: 'flex', margin: '-28px -32px', height: '100vh', overflow: 'hidden', background: '#F5F6FA', fontFamily: 'inherit' }}>
 
-      {/* ── LEFT: Order / Cart Panel ── */}
-      <div style={{ width: 360, flexShrink: 0, background: '#fff', borderRight: '1px solid #EAECF0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* ══════════════ LEFT PANEL — Cart ══════════════ */}
+      <div style={{ width: 380, flexShrink: 0, background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '2px 0 20px rgba(0,0,0,0.06)' }}>
 
-        {/* Cart Panel Header */}
-        <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid #EAECF0', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: '#111827' }}>Current Order</span>
-            {cart.length > 0 && (
-              <button onClick={() => setCart([])} style={{ fontSize: 12, color: '#9CA3AF', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Clear all</button>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+        {/* ── Cart Header: two select-style inputs ── */}
+        <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid #F0F1F5' }}>
+          <div style={{ display: 'flex', gap: 10 }}>
             <input
               className="form-input"
               type="text"
               placeholder={isCredit ? 'Customer name (required)' : 'Walk-in Customer'}
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
-              style={{ flex: 1, padding: '8px 10px', fontSize: 13, height: 36, borderRadius: 8 }}
+              style={{
+                flex: 1, padding: '10px 14px', fontSize: 13, fontWeight: 500,
+                height: 42, borderRadius: 10, border: '1.5px solid #E8ECF4',
+                background: '#FAFBFF', color: '#1A1D23', outline: 'none',
+              }}
             />
             <select
               className="form-select"
@@ -281,7 +281,11 @@ export default function RetailPage() {
                 if (v === 'credit') { setIsCredit(true); setPaymentMethod('cash'); }
                 else { setIsCredit(false); setPaymentMethod(v as 'cash' | 'transfer'); }
               }}
-              style={{ padding: '8px 28px 8px 10px', fontSize: 13, height: 36, borderRadius: 8 }}
+              style={{
+                width: 110, padding: '10px 12px', fontSize: 13, fontWeight: 600,
+                height: 42, borderRadius: 10, border: '1.5px solid #E8ECF4',
+                background: '#FAFBFF', color: '#1A1D23', outline: 'none',
+              }}
             >
               <option value="cash">Cash</option>
               <option value="transfer">Transfer</option>
@@ -290,117 +294,103 @@ export default function RetailPage() {
           </div>
         </div>
 
-        {/* Cart Items */}
+        {/* ── Cart Items ── */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {cart.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '52px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-              <ShoppingBag size={48} color="#D1D5DB" strokeWidth={1.25} />
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#9CA3AF' }}>No items yet</div>
-              <div style={{ fontSize: 12, color: '#D1D5DB' }}>Click products to add them here</div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 10, padding: 40 }}>
+              <ShoppingBag size={52} color="#E0E3EE" strokeWidth={1.2} />
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#BCC0CC' }}>No items yet</div>
+              <div style={{ fontSize: 13, color: '#D4D7E3' }}>Click a product to add it</div>
             </div>
           ) : (
-            cart.map((item, index) => {
-              const cs = getCategoryStyle(item.product.category);
-              const Icon = cs.icon;
-              const isHighlighted = selectedCartIndex === index;
-              return (
-                <div
-                  key={item.product._id}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '10px 16px', borderBottom: '1px solid #F3F4F6',
-                    background: isHighlighted ? '#F0FDF4' : 'transparent',
-                    borderLeft: isHighlighted ? '3px solid #22C55E' : '3px solid transparent',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {/* Circular icon thumbnail */}
-                  <div style={{
-                    width: 46, height: 46, borderRadius: '50%', flexShrink: 0,
-                    background: cs.bg,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                  }}>
-                    <Icon size={22} color={cs.text} strokeWidth={1.75} />
-                  </div>
-                  {/* Name + unit price */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {item.product.name}
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px 6px' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{cart.length} item{cart.length !== 1 ? 's' : ''}</span>
+                <button onClick={() => setCart([])} style={{ fontSize: 11, fontWeight: 600, color: '#C0C4D0', background: 'none', border: 'none', cursor: 'pointer' }}>Clear all</button>
+              </div>
+              {cart.map((item, index) => {
+                const cs = getCategoryStyle(item.product.category);
+                const Icon = cs.icon;
+                const isHighlighted = selectedCartIndex === index;
+                return (
+                  <div
+                    key={item.product._id}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 14,
+                      padding: '12px 20px',
+                      background: isHighlighted ? '#F8F9FF' : '#fff',
+                      borderBottom: '1px solid #F4F5F9',
+                      borderLeft: `3px solid ${isHighlighted ? '#2563EB' : 'transparent'}`,
+                      transition: 'all 0.12s',
+                    }}
+                  >
+                    {/* Thumbnail */}
+                    <div style={{
+                      width: 58, height: 58, borderRadius: 14, flexShrink: 0,
+                      background: cs.bg,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <Icon size={28} color={cs.text} strokeWidth={1.5} />
                     </div>
-                    <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>
-                      {formatLKR(getRetailPrice(item.product))}
+
+                    {/* Name + price + pencil */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1D23', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {item.product.name}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 3 }}>
+                        {formatLKR(getRetailPrice(item.product))}
+                      </div>
+                      <button
+                        onClick={() => removeFromCart(item.product._id!)}
+                        style={{
+                          marginTop: 7, width: 24, height: 24, borderRadius: '50%',
+                          background: '#EFF3FF', border: 'none', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Pencil size={11} color="#2563EB" strokeWidth={2} />
+                      </button>
+                    </div>
+
+                    {/* Qty controls — inline plain style like reference */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                      <button
+                        onClick={() => decrementOrRemove(item.product._id!)}
+                        style={{ width: 28, height: 28, borderRadius: '50%', border: '1.5px solid #E8ECF4', background: '#fff', color: '#4B5563', fontSize: 16, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+                      >−</button>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#1A1D23', minWidth: 18, textAlign: 'center' }}>{item.qty}</span>
+                      <button
+                        onClick={() => updateQty(item.product._id!, 1)}
+                        style={{ width: 28, height: 28, borderRadius: '50%', border: '1.5px solid #E8ECF4', background: '#fff', color: '#4B5563', fontSize: 16, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+                      >+</button>
                     </div>
                   </div>
-                  {/* Qty controls */}
-                  <div style={{ display: 'flex', alignItems: 'center', background: '#F3F4F6', borderRadius: 8, flexShrink: 0 }}>
-                    <button
-                      onClick={() => decrementOrRemove(item.product._id!)}
-                      style={{ width: 28, height: 28, borderRadius: '8px 0 0 8px', border: 'none', background: 'transparent', color: '#6B7280', fontSize: 16, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    >−</button>
-                    <span style={{ fontSize: 13, fontWeight: 700, minWidth: 24, textAlign: 'center', color: '#111827' }}>{item.qty}</span>
-                    <button
-                      onClick={() => updateQty(item.product._id!, 1)}
-                      style={{ width: 28, height: 28, borderRadius: '0 8px 8px 0', border: 'none', background: 'transparent', color: '#6B7280', fontSize: 16, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    >+</button>
-                  </div>
-                  {/* Line total */}
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', minWidth: 72, textAlign: 'right', flexShrink: 0 }}>
-                    {formatLKR(getRetailPrice(item.product) * item.qty)}
-                  </div>
-                </div>
-              );
-            })
+                );
+              })}
+            </>
           )}
         </div>
 
-        {/* Quick action buttons */}
-        {cart.length > 0 && (
-          <div style={{ padding: '10px 16px', borderTop: '1px solid #F3F4F6', display: 'flex', gap: 8, flexShrink: 0 }}>
-            <button
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              style={{
-                flex: 1, padding: '9px 12px', borderRadius: 10, border: 'none',
-                background: showAdvanced ? '#DCFCE7' : '#F3F4F6',
-                color: showAdvanced ? '#16A34A' : '#374151',
-                fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}
-            >
-              <Tag size={14} strokeWidth={2} /> Apply Discount
-            </button>
-            <button
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              style={{
-                flex: 1, padding: '9px 12px', borderRadius: 10, border: 'none',
-                background: '#F3F4F6', color: '#374151',
-                fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}
-            >
-              <Settings2 size={14} strokeWidth={2} /> Options
-            </button>
-          </div>
-        )}
-
-        {/* Expanded options */}
+        {/* ── Advanced options (collapsible) ── */}
         {cart.length > 0 && showAdvanced && (
-          <div style={{ borderTop: '1px solid #F3F4F6', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10, flexShrink: 0, background: '#FAFAFA' }}>
+          <div style={{ borderTop: '1px solid #F0F1F5', padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 12, background: '#FAFBFF' }}>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 5 }}>Discount (LKR)</div>
-              <input className="form-input" type="number" step="0.01" placeholder="0.00" value={discount} onChange={(e) => setDiscount(e.target.value)} style={{ padding: '8px 10px', fontSize: 13 }} />
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>Discount (LKR)</div>
+              <input className="form-input" type="number" step="0.01" placeholder="0.00" value={discount} onChange={(e) => setDiscount(e.target.value)} style={{ padding: '9px 12px', fontSize: 13, borderRadius: 10 }} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => setIsCredit(!isCredit)}>
-              <div style={{ width: 36, height: 20, borderRadius: 10, flexShrink: 0, background: isCredit ? '#22C55E' : '#D1D5DB', position: 'relative', transition: 'background 0.2s' }}>
-                <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: isCredit ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }} />
+              <div style={{ width: 36, height: 20, borderRadius: 10, flexShrink: 0, background: isCredit ? '#2563EB' : '#D1D5DB', position: 'relative', transition: 'background 0.2s' }}>
+                <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: isCredit ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }} />
               </div>
               <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Credit Sale</span>
             </div>
             {isCredit && (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', marginBottom: 5 }}>Upfront Payment (LKR)</div>
-                <input className="form-input" type="number" step="0.01" placeholder="0.00" min={0} max={total} value={creditUpfrontPayment} onChange={(e) => setCreditUpfrontPayment(e.target.value)} style={{ padding: '8px 10px', fontSize: 13 }} />
-                <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', marginBottom: 6 }}>Upfront Payment (LKR)</div>
+                <input className="form-input" type="number" step="0.01" placeholder="0.00" min={0} max={total} value={creditUpfrontPayment} onChange={(e) => setCreditUpfrontPayment(e.target.value)} style={{ padding: '9px 12px', fontSize: 13, borderRadius: 10 }} />
+                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                   <button className="btn btn-secondary btn-sm" onClick={() => setCreditUpfrontPayment((total / 2).toFixed(2))}>Half</button>
                   <button className="btn btn-secondary btn-sm" onClick={() => setCreditUpfrontPayment(total.toFixed(2))}>Full</button>
                   {creditUpfrontPayment && <button className="btn btn-secondary btn-sm" onClick={() => setCreditUpfrontPayment('')}>Clear</button>}
@@ -408,10 +398,10 @@ export default function RetailPage() {
               </div>
             )}
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', marginBottom: 5 }}>Other Charges (LKR)</div>
-              <input className="form-input" type="number" step="0.01" placeholder="0.00" value={otherCharges} onChange={(e) => setOtherCharges(e.target.value)} style={{ padding: '8px 10px', fontSize: 13 }} />
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', marginBottom: 6 }}>Other Charges (LKR)</div>
+              <input className="form-input" type="number" step="0.01" placeholder="0.00" value={otherCharges} onChange={(e) => setOtherCharges(e.target.value)} style={{ padding: '9px 12px', fontSize: 13, borderRadius: 10 }} />
               {otherChargesAmount > 0 && (
-                <input className="form-input" type="text" placeholder="e.g., Delivery Cost" value={otherChargesDescription} onChange={(e) => setOtherChargesDescription(e.target.value)} style={{ marginTop: 6, padding: '8px 10px', fontSize: 13 }} />
+                <input className="form-input" type="text" placeholder="e.g., Delivery Cost" value={otherChargesDescription} onChange={(e) => setOtherChargesDescription(e.target.value)} style={{ marginTop: 6, padding: '9px 12px', fontSize: 13, borderRadius: 10 }} />
               )}
             </div>
             <div>
@@ -420,135 +410,188 @@ export default function RetailPage() {
                 <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Send WhatsApp Receipt</span>
               </label>
               {sendWhatsApp && (
-                <input className="form-input" type="text" placeholder="+94 76 180 9833" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} style={{ marginTop: 6, padding: '8px 10px', fontSize: 13 }} />
+                <input className="form-input" type="text" placeholder="+94 76 180 9833" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} style={{ marginTop: 6, padding: '9px 12px', fontSize: 13, borderRadius: 10 }} />
               )}
             </div>
           </div>
         )}
 
-        {/* Order Summary */}
+        {/* ── Order Summary ── */}
         {cart.length > 0 && (
-          <div style={{ padding: '12px 16px', borderTop: '1px solid #F3F4F6', flexShrink: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#6B7280', padding: '3px 0' }}>
+          <div style={{ padding: '14px 20px 10px', borderTop: '1px solid #F0F1F5' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', fontSize: 13, color: '#6B7280' }}>
               <span>Subtotal</span>
-              <span style={{ fontWeight: 600, color: '#374151' }}>{formatLKR(subtotal)}</span>
+              <span style={{ color: '#374151', fontWeight: 600 }}>{formatLKR(subtotal)}</span>
             </div>
             {discountAmount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#6B7280', padding: '3px 0' }}>
-                <span>Discount</span>
-                <span style={{ fontWeight: 600, color: '#EF4444' }}>−{formatLKR(discountAmount)}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', fontSize: 13 }}>
+                <span style={{ color: '#10B981', fontWeight: 600 }}>Discount</span>
+                <span style={{ color: '#10B981', fontWeight: 600 }}>−{formatLKR(discountAmount)}</span>
               </div>
             )}
             {otherChargesAmount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#6B7280', padding: '3px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', fontSize: 13, color: '#6B7280' }}>
                 <span>{otherChargesDescription || 'Other Charges'}</span>
-                <span style={{ fontWeight: 600, color: '#374151' }}>+{formatLKR(otherChargesAmount)}</span>
+                <span style={{ color: '#374151', fontWeight: 600 }}>+{formatLKR(otherChargesAmount)}</span>
               </div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '10px 0 4px', borderTop: '1.5px solid #F3F4F6', marginTop: 6 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#6B7280' }}>TOTAL</span>
-              <span style={{ fontSize: 22, fontWeight: 800, color: '#111827' }}>{formatLKR(total)}</span>
-            </div>
             {isCredit && upfrontAmount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#6B7280', padding: '2px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#6B7280', padding: '3px 0' }}>
                 <span>Paid Now</span>
                 <span style={{ fontWeight: 600, color: '#22C55E' }}>{formatLKR(upfrontAmount)}</span>
               </div>
             )}
             {isCredit && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#6B7280', padding: '2px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#6B7280', padding: '3px 0' }}>
                 <span>Credit Due</span>
                 <span style={{ fontWeight: 600, color: creditDue > 0 ? '#F97316' : '#22C55E' }}>{formatLKR(creditDue)}</span>
               </div>
             )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1.5px solid #F0F1F5' }}>
+              <span style={{ fontSize: 14, fontWeight: 800, color: '#1A1D23', textTransform: 'uppercase', letterSpacing: '0.4px' }}>TOTAL</span>
+              <span style={{ fontSize: 22, fontWeight: 900, color: '#1A1D23' }}>{formatLKR(total)}</span>
+            </div>
             {!isCredit && profit > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#9CA3AF', padding: '2px 0' }}>
-                <span>Est. profit</span>
-                <span style={{ color: '#22C55E' }}>{formatLKR(profit)}</span>
+              <div style={{ textAlign: 'right', fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
+                Est. profit <span style={{ color: '#22C55E', fontWeight: 600 }}>{formatLKR(profit)}</span>
               </div>
             )}
           </div>
         )}
 
-        {/* Place Order button */}
-        <div style={{ padding: '12px 16px 16px', borderTop: cart.length > 0 ? '1px solid #F3F4F6' : 'none', flexShrink: 0 }}>
+        {/* ── Bottom action row: Promo + Payment type ── */}
+        {cart.length > 0 && (
+          <div style={{ display: 'flex', gap: 10, padding: '10px 20px 0' }}>
+            {/* Promo/Discount pill — like "Promo Applied" in reference */}
+            <button
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              style={{
+                flex: 1, padding: '10px 14px', borderRadius: 99, fontSize: 13, fontWeight: 600,
+                border: discountAmount > 0 ? '1.5px solid #10B981' : '1.5px solid #E8ECF4',
+                background: discountAmount > 0 ? '#F0FDF9' : '#FAFBFF',
+                color: discountAmount > 0 ? '#059669' : '#6B7280',
+                cursor: 'pointer', transition: 'all 0.15s',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              }}
+            >
+              <span>{discountAmount > 0 ? 'Promo Applied' : 'Apply Promo'}</span>
+              {discountAmount > 0 && (
+                <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Check size={11} color="#fff" strokeWidth={3} />
+                </span>
+              )}
+              {!discountAmount && <Tag size={13} color="#9CA3AF" strokeWidth={2} />}
+            </button>
+
+            {/* Payment type pill — like "QRIS" in reference */}
+            <button
+              onClick={() => {
+                if (!isCredit) setPaymentMethod(paymentMethod === 'cash' ? 'transfer' : 'cash');
+              }}
+              style={{
+                flex: 1, padding: '10px 14px', borderRadius: 99, fontSize: 13, fontWeight: 700,
+                border: '1.5px solid #E8ECF4', background: '#FAFBFF',
+                color: '#374151', cursor: 'pointer',
+              }}
+            >
+              {paymentLabel}
+            </button>
+          </div>
+        )}
+
+        {/* ── Place Order button ── */}
+        <div style={{ padding: '14px 20px 20px' }}>
           <button
             onClick={handleCheckout}
             disabled={processing || cart.length === 0}
             style={{
-              width: '100%', padding: '15px 20px', borderRadius: 14, border: 'none',
-              background: cart.length === 0 ? '#E5E7EB' : processing ? '#86EFAC' : 'linear-gradient(135deg, #22C55E, #16A34A)',
-              color: cart.length === 0 ? '#9CA3AF' : '#fff',
-              fontSize: 15, fontWeight: 700,
+              width: '100%', padding: '16px 20px', borderRadius: 14, border: 'none',
+              background: cart.length === 0 ? '#E8ECF4' : processing ? '#93C5FD' : '#2563EB',
+              color: cart.length === 0 ? '#B0B7C9' : '#fff',
+              fontSize: 16, fontWeight: 700, letterSpacing: '0.2px',
               cursor: cart.length === 0 || processing ? 'not-allowed' : 'pointer',
               transition: 'all 0.15s',
-              boxShadow: cart.length > 0 && !processing ? '0 4px 18px rgba(34,197,94,0.4)' : 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              boxShadow: cart.length > 0 && !processing ? '0 6px 20px rgba(37,99,235,0.32)' : 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}
           >
-            <span>
-              {processing ? 'Processing...'
-                : cart.length === 0 ? 'Add items to place order'
-                : isCredit
-                  ? creditDue <= 0 ? `Full Payment — ${formatLKR(total)}`
-                    : upfrontAmount > 0 ? `Pay ${formatLKR(upfrontAmount)} + Credit`
-                    : `Credit Sale — ${formatLKR(total)}`
-                : 'Place Order'}
-            </span>
             {processing
-              ? <Loader2 size={18} strokeWidth={2} style={{ animation: 'spin 1s linear infinite' }} />
-              : cart.length > 0
-              ? <ArrowRight size={18} strokeWidth={2.5} />
-              : null}
+              ? <><Loader2 size={18} strokeWidth={2} style={{ animation: 'spin 1s linear infinite' }} /> Processing...</>
+              : cart.length === 0 ? 'Add items to place order'
+              : isCredit
+                ? creditDue <= 0 ? 'Full Payment' : upfrontAmount > 0 ? `Pay ${formatLKR(upfrontAmount)} + Credit` : 'Credit Sale'
+              : 'Place Order'}
           </button>
         </div>
       </div>
 
-      {/* ── RIGHT: Menu Panel ── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#F4F6FB' }}>
+      {/* ══════════════ RIGHT PANEL — Menu ══════════════ */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#F5F6FA' }}>
 
-        {/* Header */}
-        <div style={{ height: 58, padding: '0 24px', background: '#fff', borderBottom: '1px solid #EAECF0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <Calendar size={14} color="#9CA3AF" strokeWidth={2} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{currentDate}</span>
+        {/* ── Top header bar ── */}
+        <div style={{
+          height: 64, padding: '0 28px', background: '#fff',
+          borderBottom: '1px solid #ECEEF5',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+            <button style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 4, color: '#6B7280' }}>
+              <Menu size={22} strokeWidth={2} />
+            </button>
+            <div style={{ width: 1, height: 18, background: '#ECEEF5' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Calendar size={16} color="#2563EB" strokeWidth={2} />
+              </div>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#1A1D23' }}>{currentDate}</span>
             </div>
-            <div style={{ width: 1, height: 14, background: '#E5E7EB' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <Clock size={14} color="#9CA3AF" strokeWidth={2} />
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>{currentTime}</span>
+            <div style={{ width: 1, height: 18, background: '#ECEEF5' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Clock size={16} color="#16A34A" strokeWidth={2} />
+              </div>
+              <span style={{ fontSize: 15, fontWeight: 800, color: '#1A1D23' }}>{currentTime}</span>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 99, background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} />
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#16A34A' }}>Open Order</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '6px 16px', borderRadius: 99, background: '#F0FDF4', border: '1.5px solid #BBF7D0' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#16A34A' }}>Open Order</span>
+            </div>
+            <button style={{ width: 36, height: 36, borderRadius: 10, border: '1.5px solid #ECEEF5', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF' }}>
+              <Power size={16} strokeWidth={2} />
+            </button>
           </div>
         </div>
 
-        {/* Category Tabs */}
-        <div style={{ background: '#fff', borderBottom: '1px solid #EAECF0', padding: '14px 24px 0', display: 'flex', gap: 4, overflowX: 'auto', flexShrink: 0, scrollbarWidth: 'none' }}>
+        {/* ── Category card tiles ── */}
+        <div style={{ background: '#fff', borderBottom: '1px solid #ECEEF5', padding: '16px 28px', display: 'flex', gap: 10, overflowX: 'auto', flexShrink: 0, scrollbarWidth: 'none' }}>
+
           {/* All Menu */}
-          <button
-            onClick={() => setSelectedCategory('')}
-            style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-              padding: '8px 18px 12px', border: 'none', background: 'transparent',
-              cursor: 'pointer', transition: 'all 0.15s', flexShrink: 0,
-              borderBottom: `3px solid ${selectedCategory === '' ? '#22C55E' : 'transparent'}`,
-            }}
-          >
-            <div style={{
-              width: 52, height: 52, borderRadius: '50%',
-              background: selectedCategory === '' ? '#DCFCE7' : '#F3F4F6',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              marginBottom: 2,
-            }}>
-              <LayoutGrid size={24} color={selectedCategory === '' ? '#16A34A' : '#6B7280'} strokeWidth={1.75} />
-            </div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: selectedCategory === '' ? '#16A34A' : '#374151', whiteSpace: 'nowrap' }}>All Menu</div>
-            <div style={{ fontSize: 11, color: '#9CA3AF' }}>{products.length} Items</div>
-          </button>
+          {(() => {
+            const isActive = selectedCategory === '';
+            return (
+              <button
+                onClick={() => setSelectedCategory('')}
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                  padding: '14px 20px', borderRadius: 18, border: `2px solid ${isActive ? '#2563EB' : '#ECEEF5'}`,
+                  background: isActive ? '#EFF6FF' : '#fff',
+                  cursor: 'pointer', transition: 'all 0.15s', flexShrink: 0, minWidth: 100,
+                }}
+              >
+                <div style={{
+                  width: 54, height: 54, borderRadius: '50%',
+                  background: isActive ? '#2563EB' : '#F3F4F6',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <LayoutGrid size={26} color={isActive ? '#fff' : '#9CA3AF'} strokeWidth={1.75} />
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: isActive ? '#2563EB' : '#374151', whiteSpace: 'nowrap' }}>All Menu</div>
+                <div style={{ fontSize: 11, color: '#9CA3AF' }}>{products.length} Items</div>
+              </button>
+            );
+          })()}
 
           {CATEGORIES.filter((cat) => (categoryCounts[cat] ?? 0) > 0).map((cat) => {
             const cs = getCategoryStyle(cat);
@@ -559,57 +602,62 @@ export default function RetailPage() {
                 key={cat}
                 onClick={() => setSelectedCategory(isActive ? '' : cat)}
                 style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                  padding: '8px 18px 12px', border: 'none', background: 'transparent',
-                  cursor: 'pointer', transition: 'all 0.15s', flexShrink: 0,
-                  borderBottom: `3px solid ${isActive ? '#22C55E' : 'transparent'}`,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                  padding: '14px 20px', borderRadius: 18, border: `2px solid ${isActive ? '#2563EB' : '#ECEEF5'}`,
+                  background: isActive ? '#EFF6FF' : '#fff',
+                  cursor: 'pointer', transition: 'all 0.15s', flexShrink: 0, minWidth: 100,
                 }}
               >
                 <div style={{
-                  width: 52, height: 52, borderRadius: '50%',
-                  background: isActive ? '#DCFCE7' : cs.bg,
+                  width: 54, height: 54, borderRadius: '50%',
+                  background: isActive ? '#2563EB' : cs.bg,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  marginBottom: 2,
                 }}>
-                  <Icon size={24} color={isActive ? '#16A34A' : cs.text} strokeWidth={1.75} />
+                  <Icon size={26} color={isActive ? '#fff' : cs.text} strokeWidth={1.75} />
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: isActive ? '#16A34A' : '#374151', textAlign: 'center', lineHeight: 1.2, whiteSpace: 'nowrap' }}>{cat}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: isActive ? '#2563EB' : '#374151', textAlign: 'center', lineHeight: 1.25, whiteSpace: 'nowrap' }}>{cat}</div>
                 <div style={{ fontSize: 11, color: '#9CA3AF' }}>{categoryCounts[cat]} Items</div>
               </button>
             );
           })}
         </div>
 
-        {/* Search */}
-        <div style={{ padding: '14px 24px', background: '#fff', borderBottom: '1px solid #EAECF0', flexShrink: 0 }}>
+        {/* ── Search bar (icon on right like reference) ── */}
+        <div style={{ padding: '16px 28px', background: '#fff', borderBottom: '1px solid #ECEEF5', flexShrink: 0 }}>
           <div style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', display: 'flex', alignItems: 'center' }}>
-              <Search size={16} color="#9CA3AF" strokeWidth={2} />
-            </span>
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="Search something sweet on your mind..."
+              placeholder="Search something sweet on your mind...."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setSelectedProductIndex(0); }}
               onKeyDown={handleSearchKeyDown}
-              onFocus={(e) => { e.target.style.borderColor = '#22C55E'; e.target.style.boxShadow = '0 0 0 3px rgba(34,197,94,0.10)'; }}
-              onBlur={(e) => { e.target.style.borderColor = '#E5E7EB'; e.target.style.boxShadow = 'none'; }}
-              style={{ width: '100%', padding: '12px 44px 12px 44px', border: '1.5px solid #E5E7EB', borderRadius: 99, fontSize: 14, color: '#111827', background: '#F9FAFB', outline: 'none', transition: 'border-color 0.15s, box-shadow 0.15s' }}
+              onFocus={(e) => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.09)'; }}
+              onBlur={(e) => { e.target.style.borderColor = '#E8ECF4'; e.target.style.boxShadow = 'none'; }}
+              style={{
+                width: '100%', padding: '14px 52px 14px 22px',
+                border: '1.5px solid #E8ECF4', borderRadius: 99,
+                fontSize: 14, color: '#374151', background: '#FAFBFF',
+                outline: 'none', transition: 'border-color 0.15s, box-shadow 0.15s',
+              }}
             />
-            {search && (
+            {search ? (
               <button
                 onClick={() => { setSearch(''); setSelectedProductIndex(0); }}
-                style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
+                style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 2 }}
               >
                 <X size={16} color="#9CA3AF" strokeWidth={2} />
               </button>
+            ) : (
+              <span style={{ position: 'absolute', right: 18, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', display: 'flex' }}>
+                <Search size={18} color="#B0B7C9" strokeWidth={2} />
+              </span>
             )}
           </div>
         </div>
 
-        {/* Products Grid */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', background: '#F4F6FB' }}>
+        {/* ── Product grid ── */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '22px 28px 28px', background: '#F5F6FA' }}>
           {loading ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200 }}>
               <div className="spinner" />
@@ -621,7 +669,7 @@ export default function RetailPage() {
               <p>Try a different search or category</p>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16 }}>
               {filteredProducts.map((p) => {
                 const cs = getCategoryStyle(p.category);
                 const Icon = cs.icon;
@@ -632,49 +680,62 @@ export default function RetailPage() {
                     key={p._id}
                     onClick={() => addToCart(p)}
                     style={{
-                      background: '#fff', borderRadius: 18, overflow: 'hidden',
-                      border: `2px solid ${isSelected ? '#22C55E' : 'transparent'}`,
+                      background: '#fff',
+                      borderRadius: 20,
+                      overflow: 'hidden',
+                      border: `2px solid ${isSelected ? '#2563EB' : 'transparent'}`,
                       cursor: p.stock <= 0 ? 'not-allowed' : 'pointer',
-                      opacity: p.stock <= 0 ? 0.5 : 1,
-                      transition: 'all 0.14s',
+                      opacity: p.stock <= 0 ? 0.55 : 1,
+                      transition: 'all 0.13s',
                       boxShadow: isSelected
-                        ? '0 0 0 4px rgba(34,197,94,0.18), 0 8px 24px rgba(34,197,94,0.14)'
+                        ? '0 0 0 4px rgba(37,99,235,0.12), 0 8px 24px rgba(37,99,235,0.10)'
                         : isBlinking
-                        ? '0 0 0 4px rgba(34,197,94,0.3)'
-                        : '0 2px 12px rgba(0,0,0,0.07)',
+                        ? '0 0 0 4px rgba(37,99,235,0.2)'
+                        : '0 2px 14px rgba(0,0,0,0.06)',
                       transform: isBlinking ? 'scale(1.04)' : 'scale(1)',
                     }}
                   >
-                    {/* Icon image area */}
+                    {/* Product image / icon area */}
                     <div style={{
-                      height: 124, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      height: 138, display: 'flex', alignItems: 'center', justifyContent: 'center',
                       background: cs.bg, position: 'relative',
                     }}>
-                      <Icon size={64} color={cs.text} strokeWidth={1.25} />
+                      <Icon size={70} color={cs.text} strokeWidth={1.2} />
                       {p.stock <= 0 && (
                         <div style={{
-                          position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.72)',
+                          position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.75)',
                           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
                         }}>
                           <AlertTriangle size={20} color="#EF4444" strokeWidth={2} />
-                          <span style={{ fontSize: 10, fontWeight: 700, color: '#EF4444', letterSpacing: '0.5px' }}>OUT OF STOCK</span>
+                          <span style={{ fontSize: 10, fontWeight: 800, color: '#EF4444', letterSpacing: '0.5px' }}>OUT OF STOCK</span>
                         </div>
                       )}
                     </div>
-                    {/* Info */}
-                    <div style={{ padding: '10px 12px 12px' }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#111827', lineHeight: 1.3, marginBottom: 5 }}>
+
+                    {/* Card info */}
+                    <div style={{ padding: '12px 14px 14px' }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1D23', lineHeight: 1.3, marginBottom: 9 }}>
                         {p.name}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: 14, fontWeight: 800, color: '#111827' }}>
-                          {formatLKR(getRetailPrice(p))}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                        {/* Category badge */}
+                        <span style={{
+                          fontSize: 11, fontWeight: 700,
+                          padding: '3px 10px', borderRadius: 99,
+                          background: cs.bg, color: cs.text,
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '52%',
+                        }}>
+                          {p.category}
                         </span>
-                        {p.stock > 0 && p.stock <= p.lowStockThreshold && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#F97316', fontWeight: 600 }}>
-                            <AlertTriangle size={10} strokeWidth={2} /> {p.stock} left
+                        {/* Price */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                          {p.stock > 0 && p.stock <= p.lowStockThreshold && (
+                            <AlertTriangle size={11} color="#F97316" strokeWidth={2.5} />
+                          )}
+                          <span style={{ fontSize: 15, fontWeight: 900, color: '#1A1D23' }}>
+                            {formatLKR(getRetailPrice(p))}
                           </span>
-                        )}
+                        </div>
                       </div>
                     </div>
                   </div>

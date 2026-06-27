@@ -79,64 +79,135 @@ export default function UsersPage() {
     fetchUsers();
   };
 
+  const totalUsers = users.length;
+  const totalAdmins = users.filter((u) => u.role === 'admin').length;
+  const totalCashiers = users.filter((u) => u.role === 'cashier').length;
+
   return (
     <div className="page-container">
-      <div className="page-header">
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
         <div>
-          <h1 className="page-title">Users</h1>
-          <p className="page-subtitle">Manage staff accounts</p>
+          <h1 style={{ fontSize: 24, fontWeight: 900, color: '#1A1D23', margin: 0 }}>User Management</h1>
+          <p style={{ fontSize: 13, color: '#9CA3AF', margin: '4px 0 0' }}>Manage system users and permissions</p>
         </div>
-        <button className="btn btn-primary" onClick={() => { setError(''); setShowModal(true); }}>
+        <button
+          className="btn btn-primary"
+          onClick={() => { setError(''); setShowModal(true); }}
+        >
           + Add User
         </button>
       </div>
 
+      {/* Stat Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
+        {/* Total Users */}
+        <div style={{ background: '#fff', borderRadius: 20, padding: '16px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ background: '#EFF6FF', borderRadius: 12, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+              👥
+            </div>
+            <div>
+              <p style={{ fontSize: 12, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>Total Users</p>
+              <p style={{ fontSize: 24, fontWeight: 700, color: '#1A1D23', margin: '2px 0 0' }}>{totalUsers}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Admins */}
+        <div style={{ background: '#fff', borderRadius: 20, padding: '16px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ background: '#FFF7ED', borderRadius: 12, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+              👑
+            </div>
+            <div>
+              <p style={{ fontSize: 12, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>Admins</p>
+              <p style={{ fontSize: 24, fontWeight: 700, color: '#1A1D23', margin: '2px 0 0' }}>{totalAdmins}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Cashiers */}
+        <div style={{ background: '#fff', borderRadius: 20, padding: '16px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ background: '#F0FDF4', borderRadius: 12, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+              🏪
+            </div>
+            <div>
+              <p style={{ fontSize: 12, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>Cashiers</p>
+              <p style={{ fontSize: 24, fontWeight: 700, color: '#1A1D23', margin: '2px 0 0' }}>{totalCashiers}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Users Table */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>Loading...</div>
+        <div className="loading-spinner">
+          <div className="spinner" />
+        </div>
       ) : (
-        <div className="card" style={{ overflowX: 'auto' }}>
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <table className="table">
             <thead>
               <tr>
+                <th>Avatar</th>
                 <th>Name</th>
                 <th>Username</th>
                 <th>Role</th>
-                <th>Created</th>
+                <th>Joined</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '32px' }}>
+                  <td colSpan={6} style={{ textAlign: 'center', color: '#9CA3AF', padding: '40px' }}>
                     No users found
                   </td>
                 </tr>
               ) : (
                 users.map((u) => (
                   <tr key={u._id}>
-                    <td style={{ fontWeight: 600 }}>{u.name}</td>
-                    <td style={{ color: 'var(--text-muted)' }}>{u.username}</td>
                     <td>
-                      <span style={{
-                        padding: '2px 10px',
-                        borderRadius: '999px',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        background: u.role === 'admin' ? 'var(--amber-700)' : 'var(--border-color)',
-                        color: u.role === 'admin' ? '#fff8e7' : 'var(--text-primary)',
+                      <div style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg,#2563EB,#1D4ED8)',
+                        color: '#fff',
+                        fontWeight: 800,
+                        fontSize: 15,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                       }}>
+                        {u.name.charAt(0).toUpperCase()}
+                      </div>
+                    </td>
+                    <td style={{ fontWeight: 600, color: '#1A1D23' }}>{u.name}</td>
+                    <td style={{ color: '#9CA3AF' }}>{u.username}</td>
+                    <td>
+                      <span className={u.role === 'admin' ? 'badge badge-warning' : 'badge badge-info'}>
                         {u.role}
                       </span>
                     </td>
-                    <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
-                      {new Date(u.createdAt).toLocaleDateString('en-LK')}
+                    <td style={{ color: '#9CA3AF', fontSize: 13 }}>
+                      {new Date(u.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </td>
                     <td>
                       {currentUser && u._id !== currentUser.id && (
                         <button
-                          className="btn btn-danger"
-                          style={{ padding: '4px 12px', fontSize: '12px' }}
+                          style={{
+                            padding: '5px 9px',
+                            borderRadius: 9,
+                            border: '1.5px solid #FED7AA',
+                            background: '#FEF2F2',
+                            color: '#DC2626',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
                           onClick={() => handleDelete(u)}
                         >
                           Delete
@@ -151,12 +222,13 @@ export default function UsersPage() {
         </div>
       )}
 
+      {/* Add User Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={() => !submitting && setShowModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div style={{ padding: '24px' }}>
-              <h3 style={{ marginBottom: '20px', fontSize: '18px', fontWeight: 700 }}>Add New User</h3>
-              <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <h3 style={{ marginBottom: 20, fontSize: 18, fontWeight: 700, color: '#1A1D23' }}>Add New User</h3>
+              <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div className="form-group">
                   <label className="form-label">Full Name</label>
                   <input
@@ -194,7 +266,7 @@ export default function UsersPage() {
                 <div className="form-group">
                   <label className="form-label">Role</label>
                   <select
-                    className="form-input"
+                    className="form-select"
                     value={form.role}
                     onChange={(e) => setForm({ ...form, role: e.target.value })}
                   >
@@ -203,9 +275,19 @@ export default function UsersPage() {
                   </select>
                 </div>
                 {error && (
-                  <p style={{ color: 'var(--danger)', fontSize: '13px', margin: 0 }}>{error}</p>
+                  <div style={{
+                    background: '#FEF2F2',
+                    border: '1px solid #FECACA',
+                    borderRadius: 8,
+                    padding: '10px 14px',
+                    color: '#DC2626',
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}>
+                    {error}
+                  </div>
                 )}
-                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '4px' }}>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
                   <button
                     type="button"
                     className="btn btn-secondary"

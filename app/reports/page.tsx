@@ -170,178 +170,229 @@ export default function ReportsPage() {
     });
   };
 
+  const avgOrder = sales.length > 0 ? totalRevenue / sales.length : 0;
+
+  const productColors = [
+    '#2563EB', '#0EA5E9', '#22C55E', '#F59E0B',
+    '#A855F7', '#EF4444', '#EC4899', '#14B8A6',
+  ];
+
+  const periodLabels: Record<string, string> = {
+    today: 'Today',
+    week: 'Week',
+    month: 'Month',
+    year: 'Year',
+    custom: 'Custom',
+  };
+
+  const paymentIcons: Record<string, string> = {
+    cash: '💵',
+    card: '💳',
+  };
+
   return (
-    <div className="animate-fade-in">
-      <div className="page-header">
-        <h1>📈 Reports</h1>
-        <p>Analyze your business performance</p>
-      </div>
-
-      {/* Filter Bar */}
-      <div className="report-filter-bar">
-        <div className="tabs" style={{ marginBottom: 0 }}>
-          {['today', 'week', 'month', 'year', 'custom'].map((p) => (
-            <button
-              key={p}
-              className={`tab ${period === p ? 'active' : ''}`}
-              onClick={() => setPeriod(p)}
-            >
-              {p.charAt(0).toUpperCase() + p.slice(1)}
-            </button>
-          ))}
+    <div style={{ padding: '24px', background: '#F0F2F8', minHeight: '100vh' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 900, color: '#1A1D23', margin: 0 }}>Reports</h1>
+          <p style={{ fontSize: 13, color: '#9CA3AF', margin: '4px 0 0' }}>Analyze sales and performance data</p>
         </div>
-
-        {period === 'custom' && (
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <input
-              className="form-input"
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              style={{ width: '160px' }}
-            />
-            <span style={{ color: 'var(--text-muted)' }}>to</span>
-            <input
-              className="form-input"
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              style={{ width: '160px' }}
-            />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 4, background: '#F0F2F8', borderRadius: 10, padding: 3, border: '1px solid #ECEEF5' }}>
+            {(['today', 'week', 'month', 'year', 'custom'] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 8,
+                  border: 'none',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  background: period === p ? '#fff' : 'transparent',
+                  color: period === p ? '#2563EB' : '#6B7280',
+                  boxShadow: period === p ? '0 1px 6px rgba(0,0,0,0.08)' : 'none',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {periodLabels[p]}
+              </button>
+            ))}
           </div>
-        )}
-
-        <button className="btn btn-primary" onClick={handleDownloadReport}>
-          👁️ Preview PDF Report
-        </button>
+          {period === 'custom' && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                className="form-input"
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                style={{ width: 160, fontSize: 13 }}
+              />
+              <span style={{ color: '#9CA3AF', fontSize: 13 }}>to</span>
+              <input
+                className="form-input"
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                style={{ width: 160, fontSize: 13 }}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {loading ? (
         <div className="loading-spinner"><div className="spinner" /></div>
       ) : (
         <>
-          {/* Summary Cards */}
-          <div className="report-summary">
-            <div className="report-card">
-              <h4>Total Revenue</h4>
-              <div className="amount revenue">{formatLKR(totalRevenue)}</div>
-              <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                {sales.length} sale{sales.length !== 1 ? 's' : ''}
-              </div>
-            </div>
-            <div className="report-card">
-              <h4>Total Cost</h4>
-              <div className="amount cost">{formatLKR(totalCost)}</div>
-            </div>
-            <div className="report-card">
-              <h4>Net Profit</h4>
-              <div className="amount profit">{formatLKR(totalProfit)}</div>
-              {totalRevenue > 0 && (
-                <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  {((totalProfit / totalRevenue) * 100).toFixed(1)}% margin
+          {/* Summary Stat Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+            {/* Revenue */}
+            <div style={{ background: '#fff', borderRadius: 20, padding: '18px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
+                  💰
                 </div>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Revenue</span>
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#1A1D23', lineHeight: 1.2 }}>{formatLKR(totalRevenue)}</div>
+              <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>{sales.length} sale{sales.length !== 1 ? 's' : ''}</div>
+            </div>
+
+            {/* Cost */}
+            <div style={{ background: '#fff', borderRadius: 20, padding: '18px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
+                  🧾
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cost</span>
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#1A1D23', lineHeight: 1.2 }}>{formatLKR(totalCost)}</div>
+              <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>Total cost of goods</div>
+            </div>
+
+            {/* Profit */}
+            <div style={{ background: '#fff', borderRadius: 20, padding: '18px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
+                  📈
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Net Profit</span>
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: totalProfit >= 0 ? '#16A34A' : '#EF4444', lineHeight: 1.2 }}>{formatLKR(totalProfit)}</div>
+              {totalRevenue > 0 && (
+                <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>{((totalProfit / totalRevenue) * 100).toFixed(1)}% margin</div>
               )}
+            </div>
+
+            {/* Avg Order */}
+            <div style={{ background: '#fff', borderRadius: 20, padding: '18px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: '#FAF5FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
+                  🛒
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Avg Order</span>
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#1A1D23', lineHeight: 1.2 }}>{formatLKR(avgOrder)}</div>
+              <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>Per transaction</div>
             </div>
           </div>
 
-          {/* Breakdown Grid */}
-          <div className="charts-grid" style={{ marginBottom: '24px' }}>
-            {/* Sale Type Breakdown */}
-            <div className="chart-card">
-              <h3>📊 Sales Breakdown</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '12px' }}>
-                <div style={{
-                  padding: '16px',
-                  background: 'var(--info-soft)',
-                  borderRadius: 'var(--radius-md)',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Retail</div>
-                  <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--info)' }}>
-                    {retailSales.length}
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    {formatLKR(retailSales.reduce((s, sale) => s + sale.total, 0))}
-                  </div>
+          {/* Middle Row: Sales Breakdown + Top Products */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+            {/* Sales Breakdown + Payment Methods */}
+            <div style={{ background: '#fff', borderRadius: 20, padding: '18px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1D23', marginBottom: 14 }}>Sales Breakdown</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+                <div style={{ padding: '14px 16px', background: '#EFF6FF', borderRadius: 12, textAlign: 'center' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Retail</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#2563EB' }}>{retailSales.length}</div>
+                  <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>{formatLKR(retailSales.reduce((s, sale) => s + sale.total, 0))}</div>
                 </div>
-                <div style={{
-                  padding: '16px',
-                  background: 'var(--warning-soft)',
-                  borderRadius: 'var(--radius-md)',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Wholesale</div>
-                  <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--warning)' }}>
-                    {wholesaleSales.length}
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    {formatLKR(wholesaleSales.reduce((s, sale) => s + sale.total, 0))}
-                  </div>
+                <div style={{ padding: '14px 16px', background: '#FFFBEB', borderRadius: 12, textAlign: 'center' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Wholesale</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#D97706' }}>{wholesaleSales.length}</div>
+                  <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>{formatLKR(wholesaleSales.reduce((s, sale) => s + sale.total, 0))}</div>
                 </div>
               </div>
 
-              {/* Payment Methods */}
-              <h3 style={{ marginTop: '20px' }}>💳 Payment Methods</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
-                {Object.entries(paymentBreakdown).map(([method, amount]) => (
-                  <div key={method} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ textTransform: 'capitalize', fontSize: '14px', color: 'var(--text-secondary)' }}>
-                      {method === 'cash' ? '💵' : method === 'card' ? '💳' : '🏦'} {method}
-                    </span>
-                    <span style={{ fontWeight: 600, fontSize: '14px' }}>{formatLKR(amount)}</span>
-                  </div>
-                ))}
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1D23', marginBottom: 12 }}>Payment Methods</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {Object.entries(paymentBreakdown).length === 0 ? (
+                  <p style={{ color: '#9CA3AF', fontSize: 13, margin: 0 }}>No payment data</p>
+                ) : (
+                  Object.entries(paymentBreakdown).map(([method, amount]) => {
+                    const pct = totalRevenue > 0 ? (amount / totalRevenue) * 100 : 0;
+                    return (
+                      <div key={method}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#374151', textTransform: 'capitalize' }}>
+                            {paymentIcons[method] ?? '🏦'} {method}
+                          </span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#1A1D23' }}>{formatLKR(amount)}</span>
+                        </div>
+                        <div style={{ height: 6, borderRadius: 99, background: '#F0F2F8', overflow: 'hidden' }}>
+                          <div style={{ height: 6, borderRadius: 99, background: '#2563EB', width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
 
             {/* Top Products */}
-            <div className="chart-card">
-              <h3>🏆 Top Products</h3>
+            <div style={{ background: '#fff', borderRadius: 20, padding: '18px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1D23', marginBottom: 14 }}>Top Products</div>
               {topProducts.length === 0 ? (
-                <p style={{ color: 'var(--text-dim)', textAlign: 'center', padding: '20px' }}>No sales data</p>
+                <div style={{ textAlign: 'center', padding: '30px 0', color: '#9CA3AF', fontSize: 13 }}>No sales data</div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
-                  {topProducts.slice(0, 8).map((p, i) => (
-                    <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{
-                        width: '24px',
-                        height: '24px',
-                        borderRadius: '50%',
-                        background: i < 3 ? 'var(--success-soft)' : 'var(--bg-input)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        color: i < 3 ? 'var(--emerald-400)' : 'var(--text-muted)',
-                        flexShrink: 0,
-                      }}>
-                        {i + 1}
-                      </span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '13px', fontWeight: 600 }} className="truncate">{p.name}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{p.qty} sold</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {topProducts.slice(0, 8).map((p, i) => {
+                    const maxTotal = topProducts[0]?.total || 1;
+                    const pct = (p.total / maxTotal) * 100;
+                    const color = productColors[i % productColors.length];
+                    return (
+                      <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{
+                          width: 24, height: 24, borderRadius: '50%',
+                          background: i < 3 ? '#EFF6FF' : '#F0F2F8',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 11, fontWeight: 800,
+                          color: i < 3 ? '#2563EB' : '#6B7280',
+                          flexShrink: 0,
+                        }}>
+                          {i + 1}
+                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: '#1A1D23', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                            <span style={{ fontSize: 12, fontWeight: 700, color, flexShrink: 0, marginLeft: 8 }}>{formatLKR(p.total)}</span>
+                          </div>
+                          <div style={{ height: 6, borderRadius: 99, background: '#F0F2F8', overflow: 'hidden' }}>
+                            <div style={{ height: 6, borderRadius: 99, background: color, width: `${pct}%` }} />
+                          </div>
+                          <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 3 }}>{p.qty} sold</div>
+                        </div>
                       </div>
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--emerald-400)', flexShrink: 0 }}>
-                        {formatLKR(p.total)}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
           </div>
 
           {/* Admin Performance */}
-          <div className="card" style={{ marginBottom: '24px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
-              👨‍💼 Sales & Profit by Admin ({getPeriodLabel()})
-            </h3>
+          <div style={{ background: '#fff', borderRadius: 20, padding: '18px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)', marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1D23' }}>Sales & Profit by Admin</div>
+              <span style={{ fontSize: 12, color: '#9CA3AF' }}>{getPeriodLabel()}</span>
+            </div>
             {adminPerformance.length === 0 ? (
-              <div className="empty-state" style={{ padding: '24px' }}>
-                <span className="icon">📭</span>
-                <h3>No Admin Sales Data</h3>
-                <p>No sales available for this period.</p>
+              <div style={{ textAlign: 'center', padding: '30px 0', color: '#9CA3AF', fontSize: 13 }}>
+                No admin sales data for this period.
               </div>
             ) : (
               <div className="table-container" style={{ border: 'none' }}>
@@ -363,7 +414,7 @@ export default function ReportsPage() {
                         <td style={{
                           textAlign: 'right',
                           fontWeight: 600,
-                          color: admin.profit >= 0 ? 'var(--emerald-400)' : 'var(--danger)'
+                          color: admin.profit >= 0 ? '#16A34A' : '#EF4444',
                         }}>
                           {formatLKR(admin.profit)}
                         </td>
@@ -375,16 +426,37 @@ export default function ReportsPage() {
             )}
           </div>
 
-          {/* Sales Table */}
-          <div className="card">
-            <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
-              🧾 Sales History — {getPeriodLabel()}
-            </h3>
+          {/* Sales History */}
+          <div style={{ background: '#fff', borderRadius: 20, padding: '18px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#1A1D23' }}>Sales History</div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: '#9CA3AF' }}>{getPeriodLabel()}</span>
+                <button
+                  onClick={handleDownloadReport}
+                  style={{
+                    padding: '7px 16px',
+                    borderRadius: 10,
+                    border: '1.5px solid #ECEEF5',
+                    background: '#fff',
+                    color: '#2563EB',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  📥 Export PDF
+                </button>
+              </div>
+            </div>
             {sales.length === 0 ? (
-              <div className="empty-state" style={{ padding: '30px' }}>
-                <span className="icon">📭</span>
-                <h3>No Sales in This Period</h3>
-                <p>Try selecting a different date range.</p>
+              <div style={{ textAlign: 'center', padding: '40px 0', color: '#9CA3AF', fontSize: 13 }}>
+                <div style={{ fontSize: 32, marginBottom: 10 }}>📭</div>
+                <div style={{ fontWeight: 700, color: '#6B7280', fontSize: 15, marginBottom: 4 }}>No Sales in This Period</div>
+                <div>Try selecting a different date range.</div>
               </div>
             ) : (
               <div className="table-container" style={{ border: 'none' }}>
@@ -406,11 +478,18 @@ export default function ReportsPage() {
                   <tbody>
                     {sales.map((sale) => (
                       <tr key={sale._id}>
-                        <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>{sale.invoiceNo}</td>
+                        <td style={{ fontFamily: 'monospace', fontWeight: 600, color: '#2563EB' }}>{sale.invoiceNo}</td>
                         <td>{sale.customerName}</td>
                         <td>{sale.items.length} item{sale.items.length !== 1 ? 's' : ''}</td>
                         <td>
-                          <span className={`badge ${sale.saleType === 'retail' ? 'badge-info' : 'badge-warning'}`}>
+                          <span style={{
+                            padding: '3px 10px',
+                            borderRadius: 99,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            background: sale.saleType === 'retail' ? '#EFF6FF' : '#FFFBEB',
+                            color: sale.saleType === 'retail' ? '#2563EB' : '#D97706',
+                          }}>
                             {sale.saleType}
                           </span>
                         </td>
@@ -420,17 +499,25 @@ export default function ReportsPage() {
                         <td style={{
                           textAlign: 'right',
                           fontWeight: 600,
-                          color: sale.profit >= 0 ? 'var(--emerald-400)' : 'var(--danger)'
+                          color: sale.profit >= 0 ? '#16A34A' : '#EF4444',
                         }}>
                           {formatLKR(sale.profit)}
                         </td>
-                        <td style={{ color: 'var(--text-muted)' }}>
+                        <td style={{ color: '#9CA3AF', fontSize: 13 }}>
                           {new Date(sale.date).toLocaleDateString('en-LK')}
                         </td>
                         <td style={{ textAlign: 'center' }}>
                           <button
-                            className="btn btn-secondary"
-                            style={{ padding: '4px 8px', fontSize: '12px' }}
+                            style={{
+                              padding: '4px 12px',
+                              borderRadius: 8,
+                              border: '1.5px solid #ECEEF5',
+                              background: '#F0F2F8',
+                              color: '#374151',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
                             onClick={() => generateReceipt(sale as any).catch(console.error)}
                             title="Download Receipt"
                           >

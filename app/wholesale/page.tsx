@@ -499,8 +499,11 @@ export default function WholesalePage() {
                     onClick={() => addToCart(p)}
                     style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', border: `2px solid ${isSelected ? '#2563EB' : 'transparent'}`, cursor: p.stock <= 0 ? 'not-allowed' : 'pointer', opacity: p.stock <= 0 ? 0.55 : 1, transition: 'all 0.13s', boxShadow: isSelected ? '0 0 0 4px rgba(37,99,235,0.12), 0 8px 24px rgba(37,99,235,0.10)' : isBlinking ? '0 0 0 4px rgba(37,99,235,0.2)' : '0 2px 14px rgba(0,0,0,0.06)', transform: isBlinking ? 'scale(1.04)' : 'scale(1)' }}
                   >
-                    <div style={{ height: 138, display: 'flex', alignItems: 'center', justifyContent: 'center', background: cs.bg, position: 'relative' }}>
+                    <div style={{ height: 138, display: 'flex', alignItems: 'center', justifyContent: 'center', background: cs.bg, position: 'relative', overflow: 'hidden' }}>
                       <Icon size={70} color={cs.text} strokeWidth={1.2} />
+                      {p.photo && (
+                        <img src={p.photo} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
+                      )}
                       {p.stock <= 0 && (
                         <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.75)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                           <AlertTriangle size={20} color="#EF4444" strokeWidth={2} />

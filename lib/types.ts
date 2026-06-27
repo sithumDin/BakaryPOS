@@ -9,6 +9,7 @@ export interface Product {
   stock: number;
   unit: string;
   lowStockThreshold: number;
+  photo?: string;
   createdAt?: string;
 }
 

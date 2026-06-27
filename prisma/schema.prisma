@@ -36,6 +36,7 @@ model Product {
   unit              String   @default("pcs")
   lowStockThreshold Float    @default(10)
   shelfLifeDays     Int      @default(3)
+  photo             String   @default("")
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -61,9 +62,10 @@ model Ingredient {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  recipe       ProductIngredient[]
-  transactions InventoryTransaction[]
-  prodUsages   ProductionIngredient[]
+  recipe            ProductIngredient[]
+  transactions      InventoryTransaction[]
+  prodUsages        ProductionIngredient[]
+  productionRecipes ProductionItemIngredient[]
 }
 
 model ProductIngredient {
@@ -171,6 +173,39 @@ model Production {
   product         Product                @relation(fields: [productId], references: [id])
   producedBy      User?                  @relation(fields: [producedById], references: [id])
   ingredientsUsed ProductionIngredient[]
+}
+
+model ProductionItem {
+  id        String   @id @default(cuid())
+  name      String
+  unit      String   @default("pcs")
+  category  String   @default("Bakery")
+  photo     String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  records DailyProduction[]
+  recipe  ProductionItemIngredient[]
+}
+
+model ProductionItemIngredient {
+  id             String  @id @default(cuid())
+  itemId         String
+  ingredientId   String
+  qtyPerUnit     Float   @default(0)
+
+  item       ProductionItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  ingredient Ingredient     @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+}
+
+model DailyProduction {
+  id        String   @id @default(cuid())
+  itemId    String
+  qty       Float
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  item ProductionItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
 model ProductionIngredient {

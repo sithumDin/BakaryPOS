@@ -698,9 +698,12 @@ export default function RetailPage() {
                     {/* Product image / icon area */}
                     <div style={{
                       height: 138, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: cs.bg, position: 'relative',
+                      background: cs.bg, position: 'relative', overflow: 'hidden',
                     }}>
                       <Icon size={70} color={cs.text} strokeWidth={1.2} />
+                      {p.photo && (
+                        <img src={p.photo} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
+                      )}
                       {p.stock <= 0 && (
                         <div style={{
                           position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.75)',

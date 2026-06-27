@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
         unit: body.unit || 'pcs',
         lowStockThreshold: Number(body.lowStockThreshold) || 10,
         shelfLifeDays: Number(body.shelfLifeDays) || 3,
+        photo: body.photo || '',
       },
     });
     return Response.json(serialize(product), { status: 201 });
@@ -62,6 +63,7 @@ export async function PUT(request: NextRequest) {
         unit: data.unit || 'pcs',
         lowStockThreshold: Number(data.lowStockThreshold) || 10,
         shelfLifeDays: Number(data.shelfLifeDays) || 3,
+        photo: data.photo ?? undefined,
       },
     });
     return Response.json(serialize(product));

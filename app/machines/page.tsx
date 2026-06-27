@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { DollarSign, Droplets, Wrench, Settings2, Coffee, X } from 'lucide-react';
 
 interface Machine {
   _id: string;
@@ -173,7 +174,7 @@ export default function MachinesPage() {
         <div style={{ background: '#fff', borderRadius: 16, padding: '18px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Cost ({range})</span>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#EF4444,#DC2626)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>💸</div>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#EF4444,#DC2626)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><DollarSign size={16} color="#fff" strokeWidth={2} /></div>
           </div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#DC2626' }}>{formatLKR(totalCost)}</div>
         </div>
@@ -181,7 +182,7 @@ export default function MachinesPage() {
         <div style={{ background: '#fff', borderRadius: 16, padding: '18px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Milk Cost ({range})</span>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#F59E0B,#D97706)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🥛</div>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#F59E0B,#D97706)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Droplets size={16} color="#fff" strokeWidth={2} /></div>
           </div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#D97706' }}>{formatLKR(totalMilkCost)}</div>
           <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>{totalPackets} packets used</div>
@@ -190,7 +191,7 @@ export default function MachinesPage() {
         <div style={{ background: '#fff', borderRadius: 16, padding: '18px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Rental Fee ({range})</span>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#2563EB,#1D4ED8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🔧</div>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#2563EB,#1D4ED8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Wrench size={16} color="#fff" strokeWidth={2} /></div>
           </div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#2563EB' }}>{formatLKR(totalRental)}</div>
         </div>
@@ -198,7 +199,7 @@ export default function MachinesPage() {
         <div style={{ background: '#fff', borderRadius: 16, padding: '18px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Machines</span>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#10B981,#059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>⚙️</div>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#10B981,#059669)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Settings2 size={16} color="#fff" strokeWidth={2} /></div>
           </div>
           <div style={{ fontSize: 28, fontWeight: 800, color: '#1A1D23' }}>{machines.filter((m) => m.isActive).length}</div>
         </div>
@@ -321,7 +322,7 @@ export default function MachinesPage() {
           {/* Usage table */}
           {usage.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 20px', background: '#fff', borderRadius: 20, border: '1px solid #ECEEF5' }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>☕</div>
+              <Coffee size={40} color="#9CA3AF" strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block' }} />
               <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1A1D23', margin: '0 0 8px 0' }}>No usage recorded</h3>
               <p style={{ fontSize: 14, color: '#9CA3AF', margin: 0 }}>Log milk usage above to track machine costs.</p>
             </div>
@@ -344,7 +345,7 @@ export default function MachinesPage() {
                   {usage.map((u) => (
                     <tr key={u._id}>
                       <td style={{ fontWeight: 600 }}>{u.machineName}</td>
-                      <td style={{ textAlign: 'right' }}>🥛 {u.milkPacketsUsed}</td>
+                      <td style={{ textAlign: 'right' }}>{u.milkPacketsUsed}</td>
                       <td style={{ textAlign: 'right', color: '#D97706' }}>{formatLKR(u.milkPacketsUsed * u.milkCostPerPacket)}</td>
                       <td style={{ textAlign: 'right', color: '#2563EB' }}>{formatLKR(u.dailyRentalFee)}</td>
                       <td style={{ textAlign: 'right', fontWeight: 700, color: '#DC2626' }}>{formatLKR(u.totalCost)}</td>
@@ -366,7 +367,7 @@ export default function MachinesPage() {
                 <tfoot>
                   <tr style={{ background: '#F9FAFB', borderTop: '2px solid #ECEEF5' }}>
                     <td style={{ fontWeight: 700, padding: '12px 18px', color: '#1A1D23' }}>Total</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, padding: '12px 18px' }}>🥛 {totalPackets}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, padding: '12px 18px' }}>{totalPackets}</td>
                     <td style={{ textAlign: 'right', fontWeight: 700, color: '#D97706', padding: '12px 18px' }}>{formatLKR(totalMilkCost)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 700, color: '#2563EB', padding: '12px 18px' }}>{formatLKR(totalRental)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 700, color: '#DC2626', padding: '12px 18px' }}>{formatLKR(totalCost)}</td>
@@ -386,7 +387,7 @@ export default function MachinesPage() {
         <div>
           {machines.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 20px', background: '#fff', borderRadius: 20, border: '1px solid #ECEEF5' }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>⚙️</div>
+              <Settings2 size={40} color="#9CA3AF" strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block' }} />
               <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1A1D23', margin: '0 0 8px 0' }}>No machines added</h3>
               <p style={{ fontSize: 14, color: '#9CA3AF', margin: '0 0 20px 0' }}>Add your rental machines to start tracking costs.</p>
               <button className="btn btn-primary" onClick={() => { resetForm(); setShowForm(true); }}>+ Add Machine</button>
@@ -400,8 +401,8 @@ export default function MachinesPage() {
                 >
                   {/* Card header */}
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
-                    <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg,#2563EB,#1D4ED8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
-                      ⚙️
+                    <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg,#2563EB,#1D4ED8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Settings2 size={22} color="#fff" strokeWidth={1.8} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 16, fontWeight: 800, color: '#1A1D23', marginBottom: 2 }}>{m.name}</div>

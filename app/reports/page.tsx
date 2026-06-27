@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import React from 'react';
+import { DollarSign, Receipt, TrendingUp, ShoppingCart, Banknote, CreditCard, Download, Inbox } from 'lucide-react';
 import { generateReport, generateReceipt } from '@/lib/pdf';
 
 interface Sale {
@@ -185,9 +187,9 @@ export default function ReportsPage() {
     custom: 'Custom',
   };
 
-  const paymentIcons: Record<string, string> = {
-    cash: '💵',
-    card: '💳',
+  const PaymentIcon: Record<string, React.ComponentType<{ size: number; color: string; strokeWidth: number }>> = {
+    cash: Banknote,
+    card: CreditCard,
   };
 
   return (
@@ -252,8 +254,8 @@ export default function ReportsPage() {
             {/* Revenue */}
             <div style={{ background: '#fff', borderRadius: 20, padding: '18px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                <div style={{ width: 38, height: 38, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
-                  💰
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <DollarSign size={19} color="#2563EB" strokeWidth={1.8} />
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Revenue</span>
               </div>
@@ -264,8 +266,8 @@ export default function ReportsPage() {
             {/* Cost */}
             <div style={{ background: '#fff', borderRadius: 20, padding: '18px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                <div style={{ width: 38, height: 38, borderRadius: 10, background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
-                  🧾
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Receipt size={19} color="#DC2626" strokeWidth={1.8} />
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cost</span>
               </div>
@@ -276,8 +278,8 @@ export default function ReportsPage() {
             {/* Profit */}
             <div style={{ background: '#fff', borderRadius: 20, padding: '18px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                <div style={{ width: 38, height: 38, borderRadius: 10, background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
-                  📈
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <TrendingUp size={19} color="#16A34A" strokeWidth={1.8} />
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Net Profit</span>
               </div>
@@ -290,8 +292,8 @@ export default function ReportsPage() {
             {/* Avg Order */}
             <div style={{ background: '#fff', borderRadius: 20, padding: '18px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                <div style={{ width: 38, height: 38, borderRadius: 10, background: '#FAF5FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
-                  🛒
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: '#FAF5FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ShoppingCart size={19} color="#7C3AED" strokeWidth={1.8} />
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Avg Order</span>
               </div>
@@ -328,8 +330,8 @@ export default function ReportsPage() {
                     return (
                       <div key={method}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#374151', textTransform: 'capitalize' }}>
-                            {paymentIcons[method] ?? '🏦'} {method}
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#374151', textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {React.createElement(PaymentIcon[method] ?? Banknote, { size: 14, color: '#6B7280', strokeWidth: 2 })} {method}
                           </span>
                           <span style={{ fontSize: 13, fontWeight: 700, color: '#1A1D23' }}>{formatLKR(amount)}</span>
                         </div>
@@ -448,13 +450,13 @@ export default function ReportsPage() {
                     gap: 6,
                   }}
                 >
-                  📥 Export PDF
+                  <Download size={13} strokeWidth={2} /> Export PDF
                 </button>
               </div>
             </div>
             {sales.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 0', color: '#9CA3AF', fontSize: 13 }}>
-                <div style={{ fontSize: 32, marginBottom: 10 }}>📭</div>
+                <Inbox size={36} color="#9CA3AF" strokeWidth={1.5} style={{ margin: '0 auto 10px', display: 'block' }} />
                 <div style={{ fontWeight: 700, color: '#6B7280', fontSize: 15, marginBottom: 4 }}>No Sales in This Period</div>
                 <div>Try selecting a different date range.</div>
               </div>
@@ -521,7 +523,7 @@ export default function ReportsPage() {
                             onClick={() => generateReceipt(sale as any).catch(console.error)}
                             title="Download Receipt"
                           >
-                            📥 Receipt
+                            <Download size={12} strokeWidth={2} style={{ marginRight: 4 }} /> Receipt
                           </button>
                         </td>
                       </tr>

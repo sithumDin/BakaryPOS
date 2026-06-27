@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Search, Package, AlertTriangle, DollarSign, Tag, Pencil, Trash2, TrendingUp } from 'lucide-react';
 import { Product, CATEGORIES, UNITS } from '@/lib/types';
 
 function formatLKR(amount: number) {
@@ -169,7 +170,7 @@ export default function ProductsPage() {
       {/* Search + filter bar */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center' }}>
         <div style={{ position: 'relative', flex: 1 }}>
-          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 15, pointerEvents: 'none' }}>🔍</span>
+          <Search size={15} color="#9CA3AF" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           <input
             type="text"
             placeholder="Search products..."
@@ -206,7 +207,7 @@ export default function ProductsPage() {
         {/* Total Products */}
         <div style={{ background: '#fff', borderRadius: 20, padding: '16px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📦</div>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={19} color="#2563EB" strokeWidth={1.8} /></div>
             <span style={{ fontSize: 12, textTransform: 'uppercase', color: '#9CA3AF', fontWeight: 600, letterSpacing: '0.05em' }}>Total Products</span>
           </div>
           <div style={{ fontSize: 24, fontWeight: 800, color: '#1A1D23' }}>{products.length}</div>
@@ -215,7 +216,7 @@ export default function ProductsPage() {
         {/* Low Stock */}
         <div style={{ background: '#fff', borderRadius: 20, padding: '16px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: '#FFF7ED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>⚠️</div>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: '#FFF7ED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><AlertTriangle size={19} color="#F97316" strokeWidth={1.8} /></div>
             <span style={{ fontSize: 12, textTransform: 'uppercase', color: '#9CA3AF', fontWeight: 600, letterSpacing: '0.05em' }}>Low Stock</span>
           </div>
           <div style={{ fontSize: 24, fontWeight: 800, color: lowStockCount > 0 ? '#EF4444' : '#1A1D23' }}>{lowStockCount}</div>
@@ -224,7 +225,7 @@ export default function ProductsPage() {
         {/* Total Value */}
         <div style={{ background: '#fff', borderRadius: 20, padding: '16px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>💰</div>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><DollarSign size={19} color="#16A34A" strokeWidth={1.8} /></div>
             <span style={{ fontSize: 12, textTransform: 'uppercase', color: '#9CA3AF', fontWeight: 600, letterSpacing: '0.05em' }}>Total Value</span>
           </div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#1A1D23' }}>{formatLKR(totalValue)}</div>
@@ -233,7 +234,7 @@ export default function ProductsPage() {
         {/* Categories */}
         <div style={{ background: '#fff', borderRadius: 20, padding: '16px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🏷️</div>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Tag size={19} color="#7C3AED" strokeWidth={1.8} /></div>
             <span style={{ fontSize: 12, textTransform: 'uppercase', color: '#9CA3AF', fontWeight: 600, letterSpacing: '0.05em' }}>Categories</span>
           </div>
           <div style={{ fontSize: 24, fontWeight: 800, color: '#1A1D23' }}>{uniqueCategories}</div>
@@ -243,7 +244,7 @@ export default function ProductsPage() {
       {/* Products table */}
       {filtered.length === 0 ? (
         <div className="empty-state">
-          <span className="icon">📦</span>
+          <Package size={40} color="#9CA3AF" strokeWidth={1.5} style={{ margin: '0 auto 12px' }} />
           <h3>No Products Found</h3>
           <p>Add your first product to get started.</p>
         </div>
@@ -312,16 +313,16 @@ export default function ProductsPage() {
                         <button
                           title="Edit"
                           onClick={() => openEdit(p)}
-                          style={{ padding: '5px 9px', borderRadius: 9, border: '1.5px solid #ECEEF5', background: '#F8F9FF', cursor: 'pointer', fontSize: 13 }}
+                          style={{ padding: '6px 9px', borderRadius: 9, border: '1.5px solid #BFDBFE', background: '#EFF6FF', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                         >
-                          ✏️
+                          <Pencil size={13} color="#2563EB" strokeWidth={2} />
                         </button>
                         <button
                           title="Delete"
                           onClick={() => handleDelete(p._id!)}
-                          style={{ padding: '5px 9px', borderRadius: 9, border: '1.5px solid #ECEEF5', background: '#F8F9FF', cursor: 'pointer', fontSize: 13 }}
+                          style={{ padding: '6px 9px', borderRadius: 9, border: '1.5px solid #FECACA', background: '#FEF2F2', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                         >
-                          🗑️
+                          <Trash2 size={13} color="#DC2626" strokeWidth={2} />
                         </button>
                       </div>
                     </td>
@@ -481,7 +482,7 @@ export default function ProductsPage() {
                   fontSize: 13,
                   color: '#16A34A',
                 }}>
-                  💰 Retail profit per unit: <strong>{formatLKR(parseFloat(form.retailPrice) - parseFloat(form.costPrice))}</strong>
+                  Retail profit per unit: <strong>{formatLKR(parseFloat(form.retailPrice) - parseFloat(form.costPrice))}</strong>
                   {' '}({((parseFloat(form.retailPrice) - parseFloat(form.costPrice)) / parseFloat(form.retailPrice) * 100).toFixed(1)}% margin)
                 </div>
               )}

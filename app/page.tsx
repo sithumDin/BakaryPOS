@@ -2,6 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import {
+  DollarSign, ClipboardList, TrendingUp, Package,
+  Wheat, Cake, Croissant, Cookie, Sandwich, UtensilsCrossed, Coffee,
+  ShoppingCart, Plus, Factory, BarChart2, Archive, CreditCard,
+  Calendar, Bell, AlertTriangle, Users,
+  type LucideIcon,
+} from 'lucide-react';
 import { APP_BRANDING } from '@/lib/branding';
 
 interface DashboardData {
@@ -110,19 +117,19 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Cookies & Biscuits': '#F97316', 'Rolls & Buns': '#EAB308',
   'Savories': '#22C55E', 'Beverages': '#3B82F6', 'Other': '#94A3B8',
 };
-const CATEGORY_ICONS: Record<string, string> = {
-  'Bread': '🌾', 'Cakes': '🎂', 'Pastries': '🥐',
-  'Cookies & Biscuits': '🍪', 'Rolls & Buns': '🥖',
-  'Savories': '🥗', 'Beverages': '☕', 'Other': '📦',
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  'Bread': Wheat, 'Cakes': Cake, 'Pastries': Croissant,
+  'Cookies & Biscuits': Cookie, 'Rolls & Buns': Sandwich,
+  'Savories': UtensilsCrossed, 'Beverages': Coffee, 'Other': Package,
 };
 
-const QUICK_ACTIONS = [
-  { href: '/retail',     label: 'New Order',  icon: '🛒', bg: '#EFF6FF', color: '#2563EB' },
-  { href: '/products',   label: 'Add Item',   icon: '➕', bg: '#F0FDF4', color: '#16A34A' },
-  { href: '/production', label: 'Production', icon: '🍞', bg: '#FFF7ED', color: '#C2410C' },
-  { href: '/reports',    label: 'Reports',    icon: '📊', bg: '#FDF4FF', color: '#7C3AED' },
-  { href: '/inventory',  label: 'Inventory',  icon: '🧺', bg: '#FEF2F2', color: '#DC2626' },
-  { href: '/credits',    label: 'Credits',    icon: '💳', bg: '#ECFDF5', color: '#059669' },
+const QUICK_ACTIONS: Array<{ href: string; label: string; icon: LucideIcon; bg: string; color: string }> = [
+  { href: '/retail',     label: 'New Order',  icon: ShoppingCart, bg: '#EFF6FF', color: '#2563EB' },
+  { href: '/products',   label: 'Add Item',   icon: Plus,         bg: '#F0FDF4', color: '#16A34A' },
+  { href: '/production', label: 'Production', icon: Factory,      bg: '#FFF7ED', color: '#C2410C' },
+  { href: '/reports',    label: 'Reports',    icon: BarChart2,    bg: '#FDF4FF', color: '#7C3AED' },
+  { href: '/inventory',  label: 'Inventory',  icon: Archive,      bg: '#FEF2F2', color: '#DC2626' },
+  { href: '/credits',    label: 'Credits',    icon: CreditCard,   bg: '#ECFDF5', color: '#059669' },
 ];
 
 export default function Dashboard() {
@@ -190,7 +197,7 @@ export default function Dashboard() {
 
   if (!data) return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 12 }}>
-      <div style={{ fontSize: 40 }}>⚠️</div>
+      <AlertTriangle size={40} color="#F59E0B" strokeWidth={1.5} />
       <div style={{ fontSize: 17, fontWeight: 700, color: '#1A1D23' }}>Unable to Load Dashboard</div>
       <div style={{ fontSize: 13, color: '#9CA3AF' }}>Check your database connection.</div>
     </div>
@@ -220,7 +227,8 @@ export default function Dashboard() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 12, border: '1.5px solid #ECEEF5', background: '#fff', fontSize: 13, fontWeight: 600, color: '#374151' }}>
-            📅 {dateStr}
+            <Calendar size={14} color="#6B7280" strokeWidth={2} />
+            {dateStr}
           </div>
           <div style={{ display: 'flex', gap: 4, background: '#F0F2F8', borderRadius: 10, padding: 3 }}>
             {(['today', 'week', 'month', 'year'] as const).map(p => (
@@ -238,30 +246,29 @@ export default function Dashboard() {
 
       {/* ── 4 Stat Cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
-
         <StatCard
           label="Total Sales" value={fmtLKR(revenue)}
           sub={period === 'today' ? `${data.today.count} orders today` : undefined}
-          icon="💰" iconBg="#EFF6FF"
+          icon={DollarSign} iconBg="#EFF6FF" iconColor="#2563EB"
           sparkValues={revenueVals} sparkColor="#2563EB"
           trend={revenue > 0 ? '+5.2%' : undefined} trendUp
         />
         <StatCard
           label="Total Orders" value={String(data.today.count)}
           sub="today"
-          icon="📋" iconBg="#F0FDF4"
+          icon={ClipboardList} iconBg="#F0FDF4" iconColor="#16A34A"
           sparkValues={data.dailyProfits.map((_, i) => i + 1)} sparkColor="#16A34A"
           trend="+8%" trendUp
         />
         <StatCard
           label="Avg. Order Value" value={fmtLKR(avgOrder)}
-          icon="📈" iconBg="#FEF3C7"
+          icon={TrendingUp} iconBg="#FEF3C7" iconColor="#F59E0B"
           sparkValues={profitVals} sparkColor="#F59E0B"
         />
         <StatCard
           label="Items Sold" value={String(totalSold)}
           sub="production"
-          icon="📦" iconBg="#EDE9FE"
+          icon={Package} iconBg="#EDE9FE" iconColor="#8B5CF6"
           sparkValues={revenueVals.map((v, i) => v * (i + 1))} sparkColor="#8B5CF6"
           trend="+5.1%" trendUp
         />
@@ -289,11 +296,11 @@ export default function Dashboard() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {[
-              { label: 'Retail Sales',    count: data.recentSales.filter(s => s.saleType === 'retail').length,    color: '#3B82F6', dot: '#3B82F6' },
-              { label: 'Wholesale',       count: data.recentSales.filter(s => s.saleType === 'wholesale').length,  color: '#F59E0B', dot: '#F59E0B' },
-              { label: 'Credit Pending',  count: creditTotal,                                                       color: '#F97316', dot: '#F97316' },
-              { label: 'Cash Payments',   count: data.recentSales.filter(s => s.paymentMethod === 'cash').length,  color: '#22C55E', dot: '#22C55E' },
-              { label: 'Low Stock',       count: data.lowStockProducts,                                             color: '#EF4444', dot: '#EF4444' },
+              { label: 'Retail Sales',    count: data.recentSales.filter(s => s.saleType === 'retail').length,    dot: '#3B82F6' },
+              { label: 'Wholesale',       count: data.recentSales.filter(s => s.saleType === 'wholesale').length,  dot: '#F59E0B' },
+              { label: 'Credit Pending',  count: creditTotal,                                                       dot: '#F97316' },
+              { label: 'Cash Payments',   count: data.recentSales.filter(s => s.paymentMethod === 'cash').length,  dot: '#22C55E' },
+              { label: 'Low Stock',       count: data.lowStockProducts,                                             dot: '#EF4444' },
             ].map(row => (
               <div key={row.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -306,27 +313,31 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Top Selling Items (by category) */}
+        {/* Top Categories */}
         <div style={{ background: '#fff', borderRadius: 20, padding: '20px 18px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: '#1A1D23', marginBottom: 16 }}>Top Categories</div>
           {topCategories.length === 0 ? (
             <div style={{ fontSize: 13, color: '#9CA3AF', textAlign: 'center', paddingTop: 20 }}>No sales yet</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-              {topCategories.map(([cat, amount]) => (
-                <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: CATEGORY_COLORS[cat] ? `${CATEGORY_COLORS[cat]}20` : '#F0F2F8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
-                    {CATEGORY_ICONS[cat] || '📦'}
+              {topCategories.map(([cat, amount]) => {
+                const CatIcon = CATEGORY_ICONS[cat] || Package;
+                const catColor = CATEGORY_COLORS[cat] || '#94A3B8';
+                return (
+                  <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: `${catColor}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <CatIcon size={17} color={catColor} strokeWidth={1.8} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#1A1D23', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat}</div>
+                      <div style={{ fontSize: 11, color: '#9CA3AF' }}>{fmtLKR(amount)}</div>
+                    </div>
+                    <div style={{ width: 24, height: 24, borderRadius: 8, background: '#F5F6FA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#374151', flexShrink: 0 }}>
+                      {Object.values(data.categoryBreakdown).sort((a, b) => b - a).indexOf(amount) + 1}
+                    </div>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#1A1D23', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat}</div>
-                    <div style={{ fontSize: 11, color: '#9CA3AF' }}>{fmtLKR(amount)}</div>
-                  </div>
-                  <div style={{ width: 24, height: 24, borderRadius: 8, background: '#F5F6FA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#374151', flexShrink: 0 }}>
-                    {Object.values(data.categoryBreakdown).sort((a, b) => b - a).indexOf(amount) + 1}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -365,7 +376,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.recentSales.slice(0, 8).map((sale, i) => (
+                  {data.recentSales.slice(0, 8).map((sale) => (
                     <tr key={sale._id} style={{ borderBottom: '1px solid #F8F9FF' }}>
                       <td style={{ padding: '10px 10px', fontSize: 12, fontWeight: 700, color: '#2563EB', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{sale.invoiceNo}</td>
                       <td style={{ padding: '10px 10px', fontSize: 13, color: '#374151', fontWeight: 500 }}>{sale.customerName}</td>
@@ -405,7 +416,7 @@ export default function Dashboard() {
                     background: action.bg, border: `1.5px solid ${action.bg}`,
                     cursor: 'pointer', transition: 'transform 0.13s',
                   }}>
-                    <span style={{ fontSize: 22 }}>{action.icon}</span>
+                    <action.icon size={22} color={action.color} strokeWidth={1.8} />
                     <span style={{ fontSize: 10, fontWeight: 700, color: action.color, textAlign: 'center', lineHeight: 1.2 }}>{action.label}</span>
                   </div>
                 </Link>
@@ -416,7 +427,10 @@ export default function Dashboard() {
           {/* Reminders */}
           <div style={{ background: '#fff', borderRadius: 20, padding: '18px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)', flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#1A1D23' }}>🔔 Reminders</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <Bell size={15} color="#2563EB" strokeWidth={2} />
+                <span style={{ fontSize: 14, fontWeight: 800, color: '#1A1D23' }}>Reminders</span>
+              </div>
               <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 99, background: '#EFF6FF', color: '#2563EB' }}>
                 {reminders.filter(r => !r.done).length}
               </span>
@@ -448,11 +462,14 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Production Overview (if any) ── */}
+      {/* ── Production Overview ── */}
       {data.productionSummary && data.productionSummary.totalProduced > 0 && (
         <div style={{ background: '#fff', borderRadius: 20, padding: '20px 24px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)', marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: '#1A1D23' }}>🍞 Today's Production</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Factory size={16} color="#C2410C" strokeWidth={2} />
+              <span style={{ fontSize: 15, fontWeight: 800, color: '#1A1D23' }}>Today's Production</span>
+            </div>
             <div style={{ display: 'flex', gap: 20 }}>
               {[{ label: 'Produced', val: data.productionSummary.totalProduced, color: '#2563EB' }, { label: 'Sold', val: data.productionSummary.totalSold, color: '#16A34A' }, { label: 'Unsold', val: data.productionSummary.totalUnsold, color: data.productionSummary.totalUnsold > 0 ? '#F97316' : '#16A34A' }].map(({ label, val, color }) => (
                 <div key={label} style={{ textAlign: 'center' }}>
@@ -484,7 +501,10 @@ export default function Dashboard() {
         <div style={{ display: 'grid', gridTemplateColumns: data.lowStockList.length > 0 && Object.keys(data.cashierBreakdown || {}).length > 0 ? '1fr 1fr' : '1fr', gap: 14, marginBottom: 20 }}>
           {data.lowStockList.length > 0 && (
             <div style={{ background: '#fff', borderRadius: 20, padding: '20px 24px', border: '1.5px solid #FED7AA', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#C2410C', marginBottom: 14 }}>⚠️ Low Stock Alerts</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                <AlertTriangle size={15} color="#C2410C" strokeWidth={2} />
+                <span style={{ fontSize: 14, fontWeight: 800, color: '#C2410C' }}>Low Stock Alerts</span>
+              </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {data.lowStockList.map(p => (
                   <div key={p._id} style={{ padding: '6px 14px', background: '#FFF7ED', border: '1.5px solid #FED7AA', borderRadius: 99, fontSize: 13 }}>
@@ -497,7 +517,10 @@ export default function Dashboard() {
           )}
           {Object.keys(data.cashierBreakdown || {}).length > 0 && (
             <div style={{ background: '#fff', borderRadius: 20, padding: '20px 24px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#1A1D23', marginBottom: 14 }}>👨‍💼 Sales by Cashier</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                <Users size={15} color="#2563EB" strokeWidth={2} />
+                <span style={{ fontSize: 14, fontWeight: 800, color: '#1A1D23' }}>Sales by Cashier</span>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {Object.entries(data.cashierBreakdown).sort((a, b) => b[1].revenue - a[1].revenue).map(([name, stats]) => (
                   <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -519,9 +542,9 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ label, value, sub, icon, iconBg, sparkValues, sparkColor, trend, trendUp }: {
+function StatCard({ label, value, sub, icon: Icon, iconBg, iconColor, sparkValues, sparkColor, trend, trendUp }: {
   label: string; value: string; sub?: string;
-  icon: string; iconBg: string;
+  icon: LucideIcon; iconBg: string; iconColor: string;
   sparkValues: number[]; sparkColor: string;
   trend?: string; trendUp?: boolean;
 }) {
@@ -529,7 +552,9 @@ function StatCard({ label, value, sub, icon, iconBg, sparkValues, sparkColor, tr
     <div style={{ background: '#fff', borderRadius: 20, padding: '18px 20px', border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.4px', lineHeight: 1.3 }}>{label}</span>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{icon}</div>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Icon size={18} color={iconColor} strokeWidth={2} />
+        </div>
       </div>
       <div style={{ fontSize: 22, fontWeight: 900, color: '#1A1D23', lineHeight: 1, marginBottom: 8 }}>{value}</div>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>

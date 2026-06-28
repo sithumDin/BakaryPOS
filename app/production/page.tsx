@@ -3,18 +3,30 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Factory, RotateCcw, Plus, Minus, Trash2, ClipboardList,
-  Search, Check, Sun, Package, Pencil, Camera, X, FlaskConical,
+  Search, Check, Sun, Package, Pencil, Camera, X, FlaskConical, PlusCircle,
+  Wallet, TrendingUp, Coins, Receipt,
 } from 'lucide-react';
 
-interface Ingredient { _id: string; name: string; unit: string; stock: number }
-interface RecipeLine { ingredientId: string; ingredientName: string; ingredientUnit: string; qtyPerUnit: number }
+interface IngLog { _id: string; name: string; qty: number; unit: string }
+interface InvIngredient { _id: string; name: string; unit: string; costPrice: number }
+interface RecipeRow {
+  ingredientId: string;
+  qtyPerUnit: number;
+  ingredient: { _id: string; name: string; unit: string; costPrice: number };
+}
 interface ProdItem {
   _id: string;
   name: string;
   unit: string;
   category: string;
   photo: string;
-  recipe?: RecipeLine[];
+  retailPrice: number;
+  wholesalePrice: number;
+  recipe: RecipeRow[];
+}
+
+function formatLKR(amount: number) {
+  return `LKR ${amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 interface DailyRecord {
@@ -61,12 +73,13 @@ function Thumb({ photo, name, category, size = 48 }: { photo?: string; name: str
   );
 }
 
-const BLANK_FORM = { name: '', unit: 'pcs', category: 'Bread', photo: '' };
+const BLANK_FORM = { name: '', unit: 'pcs', category: 'Bread', photo: '', retailPrice: '', wholesalePrice: '' };
 
 export default function ProductionPage() {
   const [items, setItems] = useState<ProdItem[]>([]);
   const [records, setRecords] = useState<DailyRecord[]>([]);
-  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [ingLogs, setIngLogs] = useState<IngLog[]>([]);
+  const [invIngredients, setInvIngredients] = useState<InvIngredient[]>([]);
   const [loading, setLoading] = useState(true);
   const [batch, setBatch] = useState<BatchEntry[]>([]);
   const [recording, setRecording] = useState(false);
@@ -74,55 +87,39 @@ export default function ProductionPage() {
   const [filterCat, setFilterCat] = useState('');
   const [search, setSearch] = useState('');
 
+  // Ingredient log form
+  const [ingLogName, setIngLogName] = useState('');
+  const [ingLogQty, setIngLogQty] = useState('');
+  const [ingLogUnit, setIngLogUnit] = useState('kg');
+  const [addingLog, setAddingLog] = useState(false);
+
   // Item modal
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<ProdItem | null>(null);
   const [form, setForm] = useState(BLANK_FORM);
+  const [recipeRows, setRecipeRows] = useState<{ ingredientId: string; qtyPerUnit: string }[]>([]);
   const [photoPreview, setPhotoPreview] = useState('');
   const [photoUploading, setPhotoUploading] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [photoTab, setPhotoTab] = useState<'file' | 'url'>('file');
   const fileRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
-  // Recipe lines in modal
-  const [recipe, setRecipe] = useState<RecipeLine[]>([]);
-  const [recipeIngId, setRecipeIngId] = useState('');
-  const [recipeQty, setRecipeQty] = useState('');
 
   const today = new Date().toLocaleDateString('en-LK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   const fetchAll = async () => {
-    const [iRes, rRes, ingRes] = await Promise.all([
+    const [iRes, rRes, logRes, invRes] = await Promise.all([
       fetch('/api/production/items'),
       fetch('/api/production/daily'),
+      fetch('/api/production/ingredient-log'),
       fetch('/api/inventory'),
     ]);
-    const itemData = iRes.ok ? await iRes.json() : [];
-    // flatten recipe from Prisma shape → RecipeLine[]
-    setItems(itemData.map((it: any) => ({
-      ...it,
-      recipe: (it.recipe ?? []).map((r: any) => ({
-        ingredientId: r.ingredient?._id ?? r.ingredientId,
-        ingredientName: r.ingredient?.name ?? '',
-        ingredientUnit: r.ingredient?.unit ?? '',
-        qtyPerUnit: r.qtyPerUnit,
-      })),
-    })));
-    const recData = rRes.ok ? await rRes.json() : [];
-    setRecords(recData.map((r: any) => ({
-      ...r,
-      item: {
-        ...r.item,
-        recipe: (r.item?.recipe ?? []).map((ri: any) => ({
-          ingredientId: ri.ingredient?._id ?? ri.ingredientId,
-          ingredientName: ri.ingredient?.name ?? '',
-          ingredientUnit: ri.ingredient?.unit ?? '',
-          qtyPerUnit: ri.qtyPerUnit,
-        })),
-      },
-    })));
-    const ingData = ingRes.ok ? await ingRes.json() : {};
-    setIngredients(Array.isArray(ingData) ? ingData : (ingData.ingredients ?? []));
+    setItems(iRes.ok ? await iRes.json() : []);
+    setRecords(rRes.ok ? await rRes.json() : []);
+    setIngLogs(logRes.ok ? await logRes.json() : []);
+    const invData = invRes.ok ? await invRes.json() : {};
+    const ings = Array.isArray(invData) ? invData : (invData.ingredients ?? []);
+    setInvIngredients(ings.map((i: any) => ({ _id: i._id, name: i.name, unit: i.unit, costPrice: i.costPrice ?? 0 })));
     setLoading(false);
   };
 
@@ -160,45 +157,71 @@ export default function ProductionPage() {
   };
 
   const handleReset = async () => {
-    if (!confirm("Clear today's production log and start fresh?")) return;
+    if (!confirm("Clear today's production log and ingredient usage? This starts a fresh day.")) return;
     setResetting(true);
     try {
-      await fetch('/api/production/daily', { method: 'DELETE' });
+      await Promise.all([
+        fetch('/api/production/daily', { method: 'DELETE' }),
+        fetch('/api/production/ingredient-log', { method: 'DELETE' }),
+      ]);
       setBatch([]);
       await fetchAll();
     } catch { alert('Failed to reset'); }
     finally { setResetting(false); }
   };
 
+  const handleAddIngLog = async () => {
+    if (!ingLogName.trim() || !ingLogQty || parseFloat(ingLogQty) <= 0) return;
+    setAddingLog(true);
+    try {
+      const res = await fetch('/api/production/ingredient-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: ingLogName.trim(), qty: parseFloat(ingLogQty), unit: ingLogUnit }),
+      });
+      if (res.ok) {
+        setIngLogName(''); setIngLogQty('');
+        await fetchAll();
+      }
+    } finally { setAddingLog(false); }
+  };
+
+  const handleDeleteIngLog = async (id: string) => {
+    await fetch(`/api/production/ingredient-log?id=${id}`, { method: 'DELETE' });
+    await fetchAll();
+  };
+
   /* ── item modal ── */
   const openAdd = () => {
-    setEditingItem(null); setForm(BLANK_FORM);
+    setEditingItem(null); setForm(BLANK_FORM); setRecipeRows([]);
     setPhotoPreview(''); setUrlInput(''); setPhotoTab('file');
-    setRecipe([]); setRecipeIngId(''); setRecipeQty('');
     setShowModal(true);
   };
   const openEdit = (item: ProdItem) => {
     setEditingItem(item);
-    setForm({ name: item.name, unit: item.unit, category: item.category, photo: item.photo });
+    setForm({
+      name: item.name, unit: item.unit, category: item.category, photo: item.photo,
+      retailPrice: item.retailPrice ? String(item.retailPrice) : '',
+      wholesalePrice: item.wholesalePrice ? String(item.wholesalePrice) : '',
+    });
+    setRecipeRows((item.recipe ?? []).map(r => ({ ingredientId: r.ingredientId, qtyPerUnit: String(r.qtyPerUnit) })));
     setPhotoPreview(item.photo);
     setPhotoTab(item.photo.startsWith('http') ? 'url' : 'file');
     setUrlInput(item.photo.startsWith('http') ? item.photo : '');
-    setRecipe(item.recipe ?? []);
-    setRecipeIngId(''); setRecipeQty('');
     setShowModal(true);
   };
 
-  const addRecipeLine = () => {
-    const ing = ingredients.find(i => i._id === recipeIngId);
-    if (!ing || !recipeQty || parseFloat(recipeQty) <= 0) return;
-    if (recipe.find(r => r.ingredientId === recipeIngId)) {
-      setRecipe(prev => prev.map(r => r.ingredientId === recipeIngId ? { ...r, qtyPerUnit: parseFloat(recipeQty) } : r));
-    } else {
-      setRecipe(prev => [...prev, { ingredientId: ing._id, ingredientName: ing.name, ingredientUnit: ing.unit, qtyPerUnit: parseFloat(recipeQty) }]);
-    }
-    setRecipeIngId(''); setRecipeQty('');
-  };
-  const removeRecipeLine = (id: string) => setRecipe(prev => prev.filter(r => r.ingredientId !== id));
+  /* ── recipe editor ── */
+  const addRecipeRow = () => setRecipeRows(prev => [...prev, { ingredientId: '', qtyPerUnit: '' }]);
+  const updateRecipeRow = (idx: number, patch: Partial<{ ingredientId: string; qtyPerUnit: string }>) =>
+    setRecipeRows(prev => prev.map((r, i) => i === idx ? { ...r, ...patch } : r));
+  const removeRecipeRow = (idx: number) => setRecipeRows(prev => prev.filter((_, i) => i !== idx));
+
+  // cost to make one unit, from the recipe currently in the modal
+  const recipeUnitCost = recipeRows.reduce((sum, r) => {
+    const ing = invIngredients.find(i => i._id === r.ingredientId);
+    return sum + (parseFloat(r.qtyPerUnit) || 0) * (ing?.costPrice ?? 0);
+  }, 0);
 
   const handlePhotoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -223,6 +246,9 @@ export default function ProductionPage() {
   const handleSaveItem = async () => {
     if (!form.name.trim()) return;
     const finalPhoto = photoTab === 'url' ? (urlInput.trim() || form.photo) : form.photo;
+    const recipe = recipeRows
+      .filter(r => r.ingredientId && parseFloat(r.qtyPerUnit) > 0)
+      .map(r => ({ ingredientId: r.ingredientId, qtyPerUnit: parseFloat(r.qtyPerUnit) }));
     setSaving(true);
     try {
       const res = await fetch('/api/production/items', {
@@ -230,8 +256,11 @@ export default function ProductionPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...(editingItem ? { _id: editingItem._id } : {}),
-          ...form, photo: finalPhoto,
-          recipe: recipe.map(r => ({ ingredientId: r.ingredientId, qtyPerUnit: r.qtyPerUnit })),
+          ...form,
+          retailPrice: parseFloat(form.retailPrice) || 0,
+          wholesalePrice: parseFloat(form.wholesalePrice) || 0,
+          photo: finalPhoto,
+          recipe,
         }),
       });
       if (res.ok) { setShowModal(false); await fetchAll(); }
@@ -258,17 +287,43 @@ export default function ProductionPage() {
     return acc;
   }, {});
   const todayTotal = records.reduce((s, r) => s + r.qty, 0);
-
-  // Total ingredient usage from all today's records
-  const ingredientUsage = records.reduce<Record<string, { name: string; unit: string; qty: number }>>((acc, r) => {
-    for (const line of r.item.recipe ?? []) {
-      const total = line.qtyPerUnit * r.qty;
-      if (!acc[line.ingredientId]) acc[line.ingredientId] = { name: line.ingredientName, unit: line.ingredientUnit, qty: 0 };
-      acc[line.ingredientId].qty += total;
-    }
-    return acc;
-  }, {});
   const catCounts = items.reduce<Record<string, number>>((acc, i) => { acc[i.category] = (acc[i.category] ?? 0) + 1; return acc; }, {});
+
+  /* ── cost / revenue / profit ── */
+  const itemById = Object.fromEntries(items.map(i => [i._id, i]));
+
+  // Ingredients used today, auto-derived from each item's recipe × qty produced,
+  // then merged with any manually-logged extras. Keyed by lowercased name.
+  type UsageRow = { name: string; unit: string; qty: number; cost: number; fromRecipe: number; fromManual: number };
+  const usageMap: Record<string, UsageRow> = {};
+  const addUsage = (name: string, unit: string, qty: number, costPrice: number, kind: 'recipe' | 'manual') => {
+    const key = name.trim().toLowerCase();
+    if (!usageMap[key]) usageMap[key] = { name, unit, qty: 0, cost: 0, fromRecipe: 0, fromManual: 0 };
+    usageMap[key].qty += qty;
+    usageMap[key].cost += qty * costPrice;
+    usageMap[key][kind === 'recipe' ? 'fromRecipe' : 'fromManual'] += qty;
+  };
+
+  Object.entries(todaySummary).forEach(([id, s]) => {
+    const item = itemById[id];
+    if (!item?.recipe) return;
+    item.recipe.forEach(r => {
+      addUsage(r.ingredient.name, r.ingredient.unit, r.qtyPerUnit * s.qty, r.ingredient.costPrice ?? 0, 'recipe');
+    });
+  });
+  ingLogs.forEach(log => {
+    const inv = invIngredients.find(i => i.name.trim().toLowerCase() === log.name.trim().toLowerCase());
+    addUsage(log.name, log.unit, log.qty, inv?.costPrice ?? 0, 'manual');
+  });
+
+  const usageRows = Object.values(usageMap).sort((a, b) => b.cost - a.cost);
+  const totalIngredientCost = usageRows.reduce((s, u) => s + u.cost, 0);
+
+  const retailRevenue = Object.entries(todaySummary).reduce((s, [id, t]) => s + t.qty * (itemById[id]?.retailPrice ?? 0), 0);
+  const wholesaleRevenue = Object.entries(todaySummary).reduce((s, [id, t]) => s + t.qty * (itemById[id]?.wholesalePrice ?? 0), 0);
+  const retailProfit = retailRevenue - totalIngredientCost;
+  const wholesaleProfit = wholesaleRevenue - totalIngredientCost;
+  const hasFinancials = totalIngredientCost > 0 || retailRevenue > 0 || wholesaleRevenue > 0;
 
   if (loading) return <div className="loading-spinner"><div className="spinner" /></div>;
 
@@ -471,27 +526,149 @@ export default function ProductionPage() {
               )}
             </div>
 
-            {/* Ingredient usage */}
+            {/* Cost & Profit */}
+            <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+              <div style={{ padding: '13px 16px 11px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Coins size={15} color="#0EA5E9" strokeWidth={2} />
+                <div style={{ fontWeight: 800, fontSize: 14, color: '#1A1D23', flex: 1 }}>Cost & Profit</div>
+              </div>
+              {!hasFinancials ? (
+                <div style={{ padding: '16px', textAlign: 'center', color: '#9CA3AF', fontSize: 12 }}>
+                  Set ingredient cost prices and item selling prices to see today's real cost & profit.
+                </div>
+              ) : (
+                <div style={{ padding: '12px 14px' }}>
+                  {/* Real cost */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 600, color: '#6B7280' }}>
+                      <Wallet size={14} color="#7C3AED" /> Real cost (ingredients)
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#7C3AED' }}>{formatLKR(totalIngredientCost)}</span>
+                  </div>
+                  {/* Retail */}
+                  <div style={{ borderTop: '1px solid #F3F4F6', paddingTop: 10, marginTop: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
+                      <span style={{ fontSize: 12, color: '#9CA3AF' }}>Retail revenue</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#1A1D23' }}>{formatLKR(retailRevenue)}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#374151' }}>
+                        <TrendingUp size={13} color={retailProfit >= 0 ? '#22C55E' : '#EF4444'} /> Retail profit
+                      </span>
+                      <span style={{ fontSize: 14, fontWeight: 900, color: retailProfit >= 0 ? '#22C55E' : '#EF4444' }}>{formatLKR(retailProfit)}</span>
+                    </div>
+                  </div>
+                  {/* Wholesale */}
+                  <div style={{ borderTop: '1px solid #F3F4F6', paddingTop: 10, marginTop: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
+                      <span style={{ fontSize: 12, color: '#9CA3AF' }}>Wholesale revenue</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#1A1D23' }}>{formatLKR(wholesaleRevenue)}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#374151' }}>
+                        <TrendingUp size={13} color={wholesaleProfit >= 0 ? '#22C55E' : '#EF4444'} /> Wholesale profit
+                      </span>
+                      <span style={{ fontSize: 14, fontWeight: 900, color: wholesaleProfit >= 0 ? '#22C55E' : '#EF4444' }}>{formatLKR(wholesaleProfit)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Ingredients Used Today */}
             <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #ECEEF5', boxShadow: '0 2px 14px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
               <div style={{ padding: '13px 16px 11px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <FlaskConical size={15} color="#7C3AED" strokeWidth={2} />
-                <div style={{ fontWeight: 800, fontSize: 14, color: '#1A1D23' }}>Ingredients Used Today</div>
+                <div style={{ fontWeight: 800, fontSize: 14, color: '#1A1D23', flex: 1 }}>Ingredients Used Today</div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', borderRadius: 99, padding: '2px 8px' }}>{usageRows.length}</span>
               </div>
-              {Object.keys(ingredientUsage).length === 0 ? (
-                <div style={{ padding: '14px 16px', textAlign: 'center', color: '#9CA3AF', fontSize: 12 }}>
-                  {records.length === 0 ? 'No production recorded yet' : 'No recipes set — add ingredients to each item'}
+              {/* Log entry form */}
+              <div style={{ padding: '10px 12px', borderBottom: '1px solid #F3F4F6', background: '#FAFBFF' }}>
+                <div style={{ display: 'flex', gap: 5 }}>
+                  {invIngredients.length === 0 ? (
+                    <input
+                      type="text" placeholder="Ingredient name" value={ingLogName}
+                      onChange={e => setIngLogName(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleAddIngLog()}
+                      style={{ flex: 1, padding: '6px 9px', borderRadius: 8, border: '1.5px solid #ECEEF5', fontSize: 12, outline: 'none' }}
+                    />
+                  ) : (
+                    <select
+                      value={ingLogName}
+                      onChange={e => {
+                        const selected = invIngredients.find(i => i.name === e.target.value);
+                        setIngLogName(e.target.value);
+                        if (selected) setIngLogUnit(selected.unit);
+                      }}
+                      style={{ flex: 1, padding: '6px 9px', borderRadius: 8, border: '1.5px solid #ECEEF5', fontSize: 12, outline: 'none', background: '#fff', color: ingLogName ? '#1A1D23' : '#9CA3AF' }}
+                    >
+                      <option value="">Select ingredient…</option>
+                      {invIngredients.map(i => <option key={i._id} value={i.name}>{i.name}</option>)}
+                    </select>
+                  )}
+                  <input
+                    type="number" placeholder="Qty" min="0.01" step="0.01" value={ingLogQty}
+                    onChange={e => setIngLogQty(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddIngLog()}
+                    style={{ width: 58, padding: '6px 6px', borderRadius: 8, border: '1.5px solid #ECEEF5', fontSize: 12, outline: 'none' }}
+                  />
+                  <select value={ingLogUnit} onChange={e => setIngLogUnit(e.target.value)}
+                    style={{ width: 70, padding: '6px 4px', borderRadius: 8, border: '1.5px solid #ECEEF5', fontSize: 12, outline: 'none', background: '#fff' }}>
+                    {['kg','g','L','ml','pcs','cup','tbsp','tsp','dozen','box','bag','loaf','tray'].map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                  <button onClick={handleAddIngLog} disabled={addingLog || !ingLogName.trim() || !ingLogQty}
+                    style={{ width: 32, height: 32, borderRadius: 9, border: 'none', background: '#7C3AED', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: (!ingLogName.trim() || !ingLogQty) ? 0.4 : 1 }}>
+                    <PlusCircle size={15} strokeWidth={2.5} />
+                  </button>
+                </div>
+                {invIngredients.length === 0 && (
+                  <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 5 }}>
+                    Add ingredients in the Inventory page to get a dropdown here
+                  </div>
+                )}
+              </div>
+              {usageRows.length === 0 ? (
+                <div style={{ padding: '16px', textAlign: 'center', color: '#9CA3AF', fontSize: 12 }}>
+                  Record production to auto-calculate usage, or log extra ingredients above
                 </div>
               ) : (
-                Object.entries(ingredientUsage).map(([id, u]) => (
-                  <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 14px', borderBottom: '1px solid #F9FAFB' }}>
-                    <div style={{ width: 30, height: 30, borderRadius: 8, background: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <FlaskConical size={14} color="#7C3AED" strokeWidth={2} />
+                usageRows.map(u => (
+                  <div key={u.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderBottom: '1px solid #F9FAFB' }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 7, background: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FlaskConical size={13} color="#7C3AED" strokeWidth={2} />
                     </div>
-                    <div style={{ flex: 1, fontSize: 12, fontWeight: 700, color: '#1A1D23' }}>{u.name}</div>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: '#7C3AED' }}>{u.qty % 1 === 0 ? u.qty : u.qty.toFixed(2)}</span>
-                    <span style={{ fontSize: 11, color: '#9CA3AF' }}>{u.unit}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#1A1D23', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</div>
+                      {u.fromManual > 0 && u.fromRecipe > 0 && (
+                        <div style={{ fontSize: 10, color: '#9CA3AF' }}>recipe + extra</div>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#7C3AED' }}>
+                      {u.qty % 1 === 0 ? u.qty : u.qty.toFixed(2)}
+                    </span>
+                    <span style={{ fontSize: 11, color: '#9CA3AF', width: 28 }}>{u.unit}</span>
+                    {u.cost > 0 && (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#0EA5E9', background: '#E0F2FE', borderRadius: 6, padding: '2px 6px' }}>
+                        {formatLKR(u.cost)}
+                      </span>
+                    )}
+                    {u.fromManual > 0 && (
+                      <button onClick={() => {
+                        const log = ingLogs.find(l => l.name.trim().toLowerCase() === u.name.trim().toLowerCase());
+                        if (log) handleDeleteIngLog(log._id);
+                      }}
+                        style={{ width: 20, height: 20, borderRadius: '50%', border: '1.5px solid #FECACA', background: '#FEF2F2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <X size={9} color="#EF4444" />
+                      </button>
+                    )}
                   </div>
                 ))
+              )}
+              {totalIngredientCost > 0 && (
+                <div style={{ padding: '10px 14px', background: '#FAFBFF', borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>Total ingredient cost</span>
+                  <span style={{ fontSize: 14, fontWeight: 900, color: '#7C3AED' }}>{formatLKR(totalIngredientCost)}</span>
+                </div>
               )}
             </div>
           </div>
@@ -560,49 +737,77 @@ export default function ProductionPage() {
                   </select>
                 </div>
               </div>
-            </div>
 
-              {/* Recipe / ingredients */}
-              <div style={{ marginTop: 4 }}>
-                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                  <FlaskConical size={13} color="#7C3AED" strokeWidth={2} /> Ingredients per unit (optional)
-                </label>
-                {ingredients.length === 0 ? (
-                  <div style={{ padding: '10px 12px', background: '#F5F3FF', borderRadius: 10, fontSize: 12, color: '#7C3AED' }}>
-                    No inventory ingredients yet — add them in the Inventory page first.
+              {/* Selling prices */}
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">Retail Price (LKR)</label>
+                  <input className="form-input" type="number" placeholder="0.00" step="0.01" value={form.retailPrice}
+                    onChange={e => setForm({ ...form, retailPrice: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Wholesale Price (LKR)</label>
+                  <input className="form-input" type="number" placeholder="0.00" step="0.01" value={form.wholesalePrice}
+                    onChange={e => setForm({ ...form, wholesalePrice: e.target.value })} />
+                </div>
+              </div>
+
+              {/* Recipe */}
+              <div className="form-group">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <label className="form-label" style={{ margin: 0 }}>Recipe (per {form.unit})</label>
+                  <button type="button" onClick={addRecipeRow}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', border: 'none', borderRadius: 8, padding: '4px 10px', cursor: 'pointer' }}>
+                    <Plus size={11} strokeWidth={2.5} /> Add ingredient
+                  </button>
+                </div>
+                {recipeRows.length === 0 ? (
+                  <div style={{ fontSize: 11, color: '#9CA3AF', padding: '8px 0' }}>
+                    Optional — add ingredients to auto-calculate cost &amp; ingredient usage.
                   </div>
                 ) : (
-                  <>
-                    {recipe.length > 0 && (
-                      <div style={{ marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                        {recipe.map(r => (
-                          <div key={r.ingredientId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#F5F3FF', borderRadius: 9 }}>
-                            <FlaskConical size={12} color="#7C3AED" strokeWidth={2} />
-                            <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: '#1A1D23' }}>{r.ingredientName}</span>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: '#7C3AED' }}>{r.qtyPerUnit} {r.ingredientUnit} / {form.unit}</span>
-                            <button type="button" onClick={() => removeRecipeLine(r.ingredientId)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                              <X size={13} color="#EF4444" />
-                            </button>
-                          </div>
-                        ))}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {recipeRows.map((r, idx) => {
+                      const selIng = invIngredients.find(i => i._id === r.ingredientId);
+                      const rowCost = selIng ? (parseFloat(r.qtyPerUnit) || 0) * selIng.costPrice : 0;
+                      return (
+                        <div key={idx} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <select value={r.ingredientId}
+                            onChange={e => updateRecipeRow(idx, { ingredientId: e.target.value })}
+                            style={{ flex: 1, padding: '6px 8px', borderRadius: 8, border: '1.5px solid #ECEEF5', fontSize: 12, outline: 'none', background: '#fff' }}>
+                            <option value="">Select ingredient…</option>
+                            {invIngredients.map(i => <option key={i._id} value={i._id}>{i.name} ({i.unit})</option>)}
+                          </select>
+                          <input type="number" placeholder="Qty" min="0.001" step="0.001" value={r.qtyPerUnit}
+                            onChange={e => updateRecipeRow(idx, { qtyPerUnit: e.target.value })}
+                            style={{ width: 58, padding: '6px 6px', borderRadius: 8, border: '1.5px solid #ECEEF5', fontSize: 12, outline: 'none' }} />
+                          {selIng && (
+                            <span style={{ fontSize: 11, fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', borderRadius: 6, padding: '3px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              {selIng.unit}
+                            </span>
+                          )}
+                          {rowCost > 0 && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#0EA5E9', background: '#E0F2FE', borderRadius: 6, padding: '3px 6px', whiteSpace: 'nowrap' }}>
+                              {formatLKR(rowCost)}
+                            </span>
+                          )}
+                          <button type="button" onClick={() => removeRecipeRow(idx)}
+                            style={{ width: 22, height: 22, borderRadius: '50%', border: '1.5px solid #FECACA', background: '#FEF2F2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <X size={10} color="#EF4444" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {recipeUnitCost > 0 && (
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', borderRadius: 8, padding: '6px 10px', marginTop: 4, display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Cost per {form.unit}</span>
+                        <span>{formatLKR(recipeUnitCost)}</span>
                       </div>
                     )}
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <select value={recipeIngId} onChange={e => setRecipeIngId(e.target.value)} className="form-select" style={{ flex: 1, fontSize: 12 }}>
-                        <option value="">Select ingredient…</option>
-                        {ingredients.map(i => <option key={i._id} value={i._id}>{i.name} ({i.unit})</option>)}
-                      </select>
-                      <input type="number" step="0.01" min="0.01" placeholder="Qty" value={recipeQty} onChange={e => setRecipeQty(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && addRecipeLine()}
-                        className="form-input" style={{ width: 70, fontSize: 12 }} />
-                      <button type="button" onClick={addRecipeLine} disabled={!recipeIngId || !recipeQty}
-                        style={{ padding: '6px 10px', borderRadius: 8, border: 'none', background: '#7C3AED', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
-                        <Plus size={13} />
-                      </button>
-                    </div>
-                  </>
+                  </div>
                 )}
               </div>
+            </div>
 
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>

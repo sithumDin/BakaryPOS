@@ -52,6 +52,7 @@ model Ingredient {
   name               String
   category           String   @default("Raw Material")
   stock              Float    @default(0)
+  costPrice          Float    @default(0)
   unit               String   @default("kg")
   lowStockThreshold  Float    @default(5)
   dailyUsageTarget   Float    @default(0)
@@ -176,13 +177,15 @@ model Production {
 }
 
 model ProductionItem {
-  id        String   @id @default(cuid())
-  name      String
-  unit      String   @default("pcs")
-  category  String   @default("Bakery")
-  photo     String   @default("")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  unit           String   @default("pcs")
+  category       String   @default("Bakery")
+  photo          String   @default("")
+  retailPrice    Float    @default(0)
+  wholesalePrice Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   records DailyProduction[]
   recipe  ProductionItemIngredient[]
@@ -206,6 +209,15 @@ model DailyProduction {
   createdAt DateTime @default(now())
 
   item ProductionItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
+model DailyIngredientLog {
+  id        String   @id @default(cuid())
+  name      String
+  qty       Float
+  unit      String   @default("kg")
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
 }
 
 model ProductionIngredient {

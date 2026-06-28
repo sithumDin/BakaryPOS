@@ -10,13 +10,7 @@ export async function GET() {
     todayStart.setHours(0, 0, 0, 0);
     const records = await prisma.dailyProduction.findMany({
       where: { date: { gte: todayStart } },
-      include: {
-        item: {
-          include: {
-            recipe: { include: { ingredient: { select: { id: true, name: true, unit: true } } } },
-          },
-        },
-      },
+      include: { item: true },
       orderBy: { date: 'desc' },
     });
     return Response.json(serialize(records));

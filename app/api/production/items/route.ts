@@ -5,7 +5,7 @@ import { serialize } from '@/lib/serialize';
 export const dynamic = 'force-dynamic';
 
 const includeRecipe = {
-  recipe: { include: { ingredient: { select: { id: true, name: true, unit: true, stock: true } } } },
+  recipe: { include: { ingredient: { select: { id: true, name: true, unit: true, stock: true, costPrice: true } } } },
 };
 
 export async function GET() {
@@ -29,6 +29,8 @@ export async function POST(request: NextRequest) {
         unit: body.unit || 'pcs',
         category: body.category || 'Bakery',
         photo: body.photo || '',
+        retailPrice: Number(body.retailPrice) || 0,
+        wholesalePrice: Number(body.wholesalePrice) || 0,
         recipe: body.recipe?.length
           ? { create: body.recipe.map((r: { ingredientId: string; qtyPerUnit: number }) => ({ ingredientId: r.ingredientId, qtyPerUnit: r.qtyPerUnit })) }
           : undefined,
@@ -56,6 +58,8 @@ export async function PUT(request: NextRequest) {
         unit: data.unit,
         category: data.category,
         photo: data.photo ?? undefined,
+        retailPrice: Number(data.retailPrice) || 0,
+        wholesalePrice: Number(data.wholesalePrice) || 0,
         recipe: recipe?.length
           ? { create: recipe.map((r: { ingredientId: string; qtyPerUnit: number }) => ({ ingredientId: r.ingredientId, qtyPerUnit: r.qtyPerUnit })) }
           : undefined,

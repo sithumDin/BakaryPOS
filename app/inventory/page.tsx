@@ -9,6 +9,7 @@ interface Ingredient {
   name: string;
   category: string;
   stock: number;
+  costPrice?: number;
   unit: string;
   lowStockThreshold: number;
   dailyUsageTarget: number;
@@ -73,6 +74,7 @@ export default function InventoryPage() {
     name: '',
     category: '',
     stock: '',
+    costPrice: '',
     unit: '',
     lowStockThreshold: '',
     dailyUsageTarget: '',
@@ -131,6 +133,7 @@ export default function InventoryPage() {
       name: '',
       category: '',
       stock: '',
+      costPrice: '',
       unit: '',
       lowStockThreshold: '',
       dailyUsageTarget: '',
@@ -154,6 +157,7 @@ export default function InventoryPage() {
         name: form.name.trim(),
         category: form.category.trim() || 'Raw Material',
         stock: Number(form.stock) || 0,
+        costPrice: Number(form.costPrice) || 0,
         unit: form.unit,
         lowStockThreshold: Number(form.lowStockThreshold) || 0,
         dailyUsageTarget: Number(form.dailyUsageTarget) || 0,
@@ -191,6 +195,7 @@ export default function InventoryPage() {
       name: ingredient.name,
       category: ingredient.category,
       stock: String(ingredient.stock),
+      costPrice: String(ingredient.costPrice ?? 0),
       unit: ingredient.unit,
       lowStockThreshold: String(ingredient.lowStockThreshold),
       dailyUsageTarget: String(ingredient.dailyUsageTarget ?? 0),
@@ -652,7 +657,12 @@ export default function InventoryPage() {
                 </div>
                 <div className="form-group">
                   <label className="form-label" style={labelStyle}>Unit</label>
-                  <input placeholder="kg, L, pcs…" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className="form-input" style={inputStyle} />
+                  <select value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className="form-select" style={inputStyle}>
+                    <option value="">Select unit…</option>
+                    {['kg','g','L','ml','pcs','cup','tbsp','tsp','dozen','box','bag','pack','loaf','tray','bottle','litre'].map(u => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -665,6 +675,12 @@ export default function InventoryPage() {
                   <label className="form-label" style={labelStyle}>Low Stock Alert</label>
                   <input type="number" placeholder="0" value={form.lowStockThreshold} onChange={(e) => setForm({ ...form, lowStockThreshold: e.target.value })} className="form-input" style={inputStyle} />
                 </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={labelStyle}>Cost Price (per {form.unit || 'unit'})</label>
+                <input type="number" placeholder="0.00" step="0.01" value={form.costPrice} onChange={(e) => setForm({ ...form, costPrice: e.target.value })} className="form-input" style={inputStyle} />
+                <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>Used to calculate production cost & profit</div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
